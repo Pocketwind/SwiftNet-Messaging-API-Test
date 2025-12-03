@@ -2,20 +2,15 @@ from email import message
 from urllib import request
 import requests, json, base64
 from Token import *
-SUBJECT="cn=%3,cn=api,o=etpxkrss,o=swift"
 
-proxies={
-    "http":"http://10.10.3.101:48600",
-    "https":"http://10.10.3.101:48600"
-}
 
-with open("private.txt", "r") as f:
-    pri=f.read()
-with open("certificate.txt", "r") as f:
-    cert=f.read()
 
-def SingleSend(GetAccessToken, messageData):
+def SingleSend(messageData, settings):
     accessToken=GetAccessToken()
+    with open(settings["privatePath"], "r") as f:
+        private=f.read()
+    with open(settings["certificatePath"], "r") as f:
+        certificate=f.read()
     messagePayload=messageData['payload']
     #messagePayload=messagePayload.replace('\r\n', '\n')
     messagePayloadBase64=base64.b64encode(messagePayload.encode('utf-8')).decode('utf-8')
@@ -28,12 +23,12 @@ def SingleSend(GetAccessToken, messageData):
     }
     bodyString=json.dumps(body, separators=(',', ':'))
     url="https://api-test.swiftnet.sipn.swift.com/alliancecloud-test/v2/fin/messages"
-    signature=create_nr_signature(SUBJECT, pri, cert, body, url)
+    signature=create_nr_signature(settings["jwtConfig"]["subject"], private, certificate, body, url)
     headers={
         "Authorization":f"Bearer {accessToken}",
         "X-SWIFT-Signature":signature,
         "Content-Type":"application/json",
         "Accept":"application/json"
     }
-    response=requests.post(url, headers=headers, data=bodyString, proxies=proxies, verify=False)
+    response=requests.post(url, headers=headers, data=bodyString, proxies=settings["jwtConfig"]["proxies"], verify=False)
     return response.json()

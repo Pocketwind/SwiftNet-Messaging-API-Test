@@ -12,11 +12,6 @@ from cryptography.hazmat.primitives.asymmetric import padding
 import threading
 
 
-proxies={
-    "http":"http://10.10.3.101:48600",
-    "https":"http://10.10.3.101:48600"
-}
-
 def ReadTokens(path="tokens.json"):
     try:
         with open(path, "r") as f:
@@ -67,36 +62,32 @@ def GenerateNewTokens(url, consumerCred):
     )
     return token
 
-def RefreshBasicToken(url, refreshToken, consumerCred, isJWT=False):
-    requestKey=MakeRequestKey(consumerCred)
+def RefreshToken(jwtConfig):
+    requestKey=MakeRequestKey(jwtConfig["consumerKey"],jwtConfig["consumerSecret"])
     headers={
         "Authorization":f"Basic {requestKey}"
     }
     body={
         "grant_type":"refresh_token",
-        "refresh_token":f"{refreshToken}"
+        "refresh_token":f"{GetRefreshToken()}"
     }
-    if isJWT:
-        response=requests.post(url, headers=headers, data=body, proxies=proxies, verify=False)
-    else:
-        response=requests.post(url, headers=headers, data=body)
+    
+    response=requests.post(jwtConfig["url"], 
+                           headers=headers, 
+                           data=body, 
+                           proxies=jwtConfig["proxies"], 
+                           verify=False)
+
     responseJson=response.json()
     refreshToken=responseJson.get("refresh_token")
     accessToken=responseJson.get("access_token")
-    refreshTokenExpiresIn=responseJson.get("refresh_token_expires_in")
-    expiresIn=responseJson.get("expires_in")
-    createdAt=int(time.time())
-    token=TokenResponse(
-        refreshToken=refreshToken,
-        accessToken=accessToken,
-        refreshTokenExpiresIn=refreshTokenExpiresIn,
-        expiresIn=expiresIn,
-        createdAt=createdAt
-    )
-    return token
+    #refreshTokenExpiresIn=responseJson.get("refresh_token_expires_in")
+    #expiresIn=responseJson.get("expires_in")
 
-def MakeRequestKey(consumerCred):
-    requestKey=f"{consumerCred.consumerKey}:{consumerCred.consumerSecret}"
+    return accessToken, refreshToken
+
+def MakeRequestKey(key, secret):
+    requestKey=f"{key}:{secret}"
     requestKeyBase64=base64.b64encode(requestKey.encode('utf-8')).decode('utf-8')
     return requestKeyBase64
 
@@ -115,61 +106,55 @@ def GetBearerToken(url, consumerCred):
 
 #-------------------------------JWT-------------------------------------
 
-def GenerateNewTokensWithJWT(URL, jwtConfig):
-    accessTokenResponse=GetBearerTokenWithJWT(URL, jwtConfig)
+def GenerateNewTokensWithJWT(jwtConfig):
+    accessTokenResponse=GetBearerTokenWithJWT(jwtConfig)
     refreshToken=accessTokenResponse.get("refresh_token")
     accessToken=accessTokenResponse.get("access_token")
-    refreshTokenExpiresIn=accessTokenResponse.get("refresh_token_expires_in")
-    expiresIn=accessTokenResponse.get("expires_in")
-    createdAt=int(time.time())
-    token=TokenResponse(
-        refreshToken=refreshToken,
-        accessToken=accessToken,
-        refreshTokenExpiresIn=refreshTokenExpiresIn,
-        expiresIn=expiresIn,
-        createdAt=createdAt
-    )
-    return token
+    #refreshTokenExpiresIn=accessTokenResponse.get("refresh_token_expires_in")
+    #expiresIn=accessTokenResponse.get("expires_in")
+    return accessToken, refreshToken
 
 def CreateJWT(jwtConfig):
+    with open(jwtConfig["certificatePath"], "r") as f:
+        cert=f.read()
+    with open(jwtConfig["privatePath"], "r") as f:
+        private=f.read()
     currentTime=int(time.time())
     payload={
-        "iss": jwtConfig.consumerKey,
-        "aud": jwtConfig.audience,
-        "sub": jwtConfig.subject,
+        "iss": jwtConfig["consumerKey"],
+        "aud": jwtConfig["audience"],
+        "sub": jwtConfig["subject"],
         "jti": simpleJTI(),
         #Postman 예제 js는 ms단위
         #파이썬은 s 단위
-        "exp": currentTime + jwtConfig.expirationTime,
+        "exp": currentTime + jwtConfig["expirationTime"],
         "iat": currentTime
     }
     header={
         "typ": "JWT",
         "alg": "RS256",
-        "x5c": [jwtConfig.certificate
+        "x5c": [cert
                 .replace("-----BEGIN CERTIFICATE-----", "")
                 .replace("-----END CERTIFICATE-----", "")
                 .replace("\n", "")
                 .replace("\r", "")
                 .replace(" ", "")]
     }
-    jwtToken=jwt.encode(payload, jwtConfig.privateKey, algorithm="RS256", headers=header)
-    #with open("jwtToken.txt", "w") as f:
-    #    f.write(jwtToken)
+    jwtToken=jwt.encode(payload, private, algorithm="RS256", headers=header)
     return jwtToken
 
-def GetBearerTokenWithJWT(url, jwtConfig):
+def GetBearerTokenWithJWT(jwtConfig):
     jwtToken = CreateJWT(jwtConfig)
     body={
-        "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+        "grant_type": jwtConfig["grant_type"],
         "assertion": jwtToken,
-        "scope": "swift.alliancecloud.api!p"
+        "scope": jwtConfig["scope"]
     }
     header={
-        "Authorization": f"Basic {MakeRequestKey(ConsumerCredentials(jwtConfig.consumerKey, jwtConfig.consumerSecret))}",
+        "Authorization": f"Basic {MakeRequestKey(jwtConfig["consumerKey"],jwtConfig["consumerSecret"])}",
         "Content-Type": "application/x-www-form-urlencoded"
     }
-    response=requests.post(url, headers=header, data=body, proxies=proxies, verify=False)
+    response=requests.post(jwtConfig["url"], headers=header, data=body, proxies=jwtConfig["proxies"], verify=False)
     responseJson=response.json()
     return responseJson
 
@@ -279,12 +264,33 @@ def create_nr_signature(sub, private_key_pem, certificate_pem, request_body, url
 
 #Token Manager Thread------------------------------
 
-_lock=threading.RLock()
 _accessToken=""
-consumerCred=""
-expired=60*10
+_refreshToken=""
+_consumerCred=""
+_consumerKey=""
+_creationTime=-1
 def SetAccessToken(token):
     global _accessToken
     _accessToken=token
 def GetAccessToken():
     return _accessToken
+def SetRefreshToken(token):
+    global _refreshToken
+    _refreshToken=token
+def GetRefreshToken():
+    return _refreshToken
+def SetConsumerCred(cred):
+    global _consumerCred
+    _consumerCred=cred
+def GetConsumerCred():
+    return _consumerCred
+def SetConsumerKey(cred):
+    global _consumerKey
+    _consumerKey=cred
+def GetConsumerKey():
+    return _consumerKey
+def SetCreationTime(t):
+    global _creationTime
+    _creationTime=t
+def GetCreationTime():
+    return _creationTime

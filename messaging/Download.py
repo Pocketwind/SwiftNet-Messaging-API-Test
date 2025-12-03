@@ -2,14 +2,9 @@ import requests, json, time, base64
 
 from Token import GetAccessToken
 
-proxies={
-    "http":"http://10.10.3.101:48600",
-    "https":"http://10.10.3.101:48600"
-}
-
     
-def Download(accessToken, distPath, downloadPath):
-    with open(distPath, "r") as f:
+def Download(accessToken, settings):
+    with open(settings["distFile"], "r") as f:
         dist = json.load(f)
     dist=dist["distributions"]
     messages=[]
@@ -36,39 +31,39 @@ def Download(accessToken, distPath, downloadPath):
     }
 
     if(len(messages) != 0):
-        messageResponse=requests.get(messageUrl, headers=headers, params=messageParam, proxies=proxies, verify=False, timeout=5).json()
-        messagePath=f"{downloadPath}/{int(time.time())}.message"
+        messageResponse=requests.get(messageUrl, headers=headers, params=messageParam, proxies=settings["proxies"], verify=False, timeout=5).json()
+        messagePath=f"{settings["downloadPath"]}/{int(time.time())}.message"
         with open(messagePath, "w") as f:
             json.dump(messageResponse, f, indent=4)
-        print("Messages Downloaded")
+        print("Download - Messages Downloaded")
         for message in messages:
-            SingleAck(accessToken, message)
+            SingleAck(accessToken, message, settings)
     elif(len(reports) != 0):
-        reportResponse=requests.get(reportUrl, headers=headers, params=reportParam, proxies=proxies, verify=False, timeout=5).json()
-        reportPath=f"{downloadPath}/{int(time.time())}.report"
+        reportResponse=requests.get(reportUrl, headers=headers, params=reportParam, proxies=settings["proxies"], verify=False, timeout=5).json()
+        reportPath=f"{settings["downloadPath"]}/{int(time.time())}.report"
         with open(reportPath, "w") as f:
             json.dump(reportResponse, f, indent=4)
-        print("Reports Downloaded")
+        print("Download - Reports Downloaded")
         for report in reports:
-            SingleAck(accessToken, report)
+            SingleAck(accessToken, report, settings)
     else:
-        print("No Messages")
+        print("Download - No Messages")
 
 
-def ThreadDownload(downloadPath, distPath, GetAccessToken, interval, stopEvent):
+def ThreadDownload(settings, stopEvent):
     while not stopEvent.is_set():
         try:
             accessToken=GetAccessToken()
-            distributionList = Download(accessToken, distPath, downloadPath)
+            distributionList = Download(accessToken, settings)
         except Exception as e:
-            print("ThreadDownload error:", type(e).__name__, e)
-        for _ in range(int(interval)):
+            print("Download - ThreadDownload error:", type(e).__name__, e)
+        for _ in range(int(settings["downloadInterval"])):
             if stopEvent.is_set():
                 break
             time.sleep(1)
 
 
-def SingleAck(accessToken, id):
+def SingleAck(accessToken, id, settings):
     headers={
         "Accept":"application/json",
         "Authorization":f"Bearer {accessToken}"
@@ -78,7 +73,7 @@ def SingleAck(accessToken, id):
     }
     
     ackUrl="https://api-test.swiftnet.sipn.swift.com/alliancecloud-test/v2/distributions/<id>/acks"
-    print("Acknowledging ID:", id)
+    print("Download - Acknowledging ID:", id)
     ackUrl=ackUrl.replace("<id>",str(id))
-    response=requests.post(ackUrl, headers=headers, params=param, proxies=proxies, verify=False)
-    print(f"Acked: {id}")
+    response=requests.post(ackUrl, headers=headers, params=param, proxies=settings["proxies"], verify=False)
+    print(f"Download - Acked: {id}")

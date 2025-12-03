@@ -5,3 +5,4 @@ basic_tokens.json
 jwt_tokens.json
 private.txt
 certificate.txt
+settings.json

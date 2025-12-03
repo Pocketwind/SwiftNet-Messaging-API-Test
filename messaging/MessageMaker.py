@@ -50,7 +50,7 @@ def MessageMaker(downloadPath, outputPath, ackPath):
             payload=payload.replace("\r","")
             sender=item["message"]["sender"]
             receiver=item["message"]["receiver"]
-            mtype=item["message"]["message_type"].replace("fin.","")
+            mtype=item["message"]["message_type"].split(".")[1]
             messageId=item["distribution"]["id"]
             message=MTMaker(sender,receiver,payload,mtype)
             with open(f"{outputPath}/{messageId}.out", "w") as f:
@@ -62,9 +62,10 @@ def MessageMaker(downloadPath, outputPath, ackPath):
             item["transmission_report"]["message"]["payload"]=payload
             sender=item["transmission_report"]["message"]["sender"]
             receiver=item["transmission_report"]["message"]["receiver"]
-            mtype=item["transmission_report"]["message"]["message_type"][:-3]
+            mtype=item["transmission_report"]["message"]["message_type"].split(".")[1]
             messageId=item["distribution"]["id"]
             with open(f"{ackPath}/{messageId}.ack", "w") as f:
                 #f.write(payload)
+
                 json.dump(item, f, indent=4)
         

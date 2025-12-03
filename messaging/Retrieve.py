@@ -1,13 +1,8 @@
 import requests, time, json, os, tempfile
-
 from Token import *
 
-proxies={
-    "http":"http://10.10.3.101:48600",
-    "https":"http://10.10.3.101:48600"
-}
 
-def Retrieve(accessToken, limit):
+def Retrieve(accessToken, limit, proxies):
     url="https://api-test.swiftnet.sipn.swift.com/alliancecloud-test/v2/distributions"
     headers={
         "Accept":"application/json",
@@ -38,20 +33,20 @@ def write_atomic(path, data):
             pass
         raise
 
-def ThreadRetrieve(path, GetAccessToken, limit, interval, stopEvent):
+def ThreadRetrieve(settings, stopEvent):
     while not stopEvent.is_set():
         try:
             accessToken=GetAccessToken()
-            distributionList = Retrieve(accessToken, limit)
+            distributionList = Retrieve(accessToken, settings["maxDistSize"], settings["proxies"])
             check=distributionList.get("distributions")
             if not isinstance(check, dict):
-                print("Distribution List Updated.")
-                write_atomic(path, distributionList)
+                print("Distribution - List Updated.")
+                write_atomic(settings["distFile"], distributionList)
             else:
-                print("Token Expired. Need to Refresh")
+                print("Distribution - Token Expired. Need to Refresh")
         except Exception as e:
             print("ThreadRetrieve error:", type(e).__name__, e)
-        for _ in range(int(interval)):
+        for _ in range(int(settings["retrieveInterval"])):
             if stopEvent.is_set():
                 break
             time.sleep(1)
