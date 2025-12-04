@@ -62,8 +62,8 @@ def GenerateNewTokens(url, consumerCred):
     )
     return token
 
-def RefreshToken(jwtConfig):
-    requestKey=MakeRequestKey(jwtConfig["consumerKey"],jwtConfig["consumerSecret"])
+def RefreshToken(settings):
+    requestKey=MakeRequestKey(settings["consumerKey"],settings["consumerSecret"])
     headers={
         "Authorization":f"Basic {requestKey}"
     }
@@ -72,10 +72,10 @@ def RefreshToken(jwtConfig):
         "refresh_token":f"{GetRefreshToken()}"
     }
     
-    response=requests.post(jwtConfig["url"], 
+    response=requests.post(settings["url"], 
                            headers=headers, 
                            data=body, 
-                           proxies=jwtConfig["proxies"], 
+                           proxies=settings["proxies"], 
                            verify=False)
 
     responseJson=response.json()
@@ -106,28 +106,28 @@ def GetBearerToken(url, consumerCred):
 
 #-------------------------------JWT-------------------------------------
 
-def GenerateNewTokensWithJWT(jwtConfig):
-    accessTokenResponse=GetBearerTokenWithJWT(jwtConfig)
+def GenerateNewTokensWithJWT(settings):
+    accessTokenResponse=GetBearerTokenWithJWT(settings)
     refreshToken=accessTokenResponse.get("refresh_token")
     accessToken=accessTokenResponse.get("access_token")
     #refreshTokenExpiresIn=accessTokenResponse.get("refresh_token_expires_in")
     #expiresIn=accessTokenResponse.get("expires_in")
     return accessToken, refreshToken
 
-def CreateJWT(jwtConfig):
-    with open(jwtConfig["certificatePath"], "r") as f:
+def CreateJWT(settings):
+    with open(settings["certificatePath"], "r") as f:
         cert=f.read()
-    with open(jwtConfig["privatePath"], "r") as f:
+    with open(settings["privatePath"], "r") as f:
         private=f.read()
     currentTime=int(time.time())
     payload={
-        "iss": jwtConfig["consumerKey"],
-        "aud": jwtConfig["audience"],
-        "sub": jwtConfig["subject"],
+        "iss": settings["consumerKey"],
+        "aud": settings["audience"],
+        "sub": settings["subject"],
         "jti": simpleJTI(),
         #Postman 예제 js는 ms단위
         #파이썬은 s 단위
-        "exp": currentTime + jwtConfig["expirationTime"],
+        "exp": currentTime + settings["expirationTime"],
         "iat": currentTime
     }
     header={
@@ -143,18 +143,18 @@ def CreateJWT(jwtConfig):
     jwtToken=jwt.encode(payload, private, algorithm="RS256", headers=header)
     return jwtToken
 
-def GetBearerTokenWithJWT(jwtConfig):
-    jwtToken = CreateJWT(jwtConfig)
+def GetBearerTokenWithJWT(settings):
+    jwtToken = CreateJWT(settings)
     body={
-        "grant_type": jwtConfig["grant_type"],
+        "grant_type": settings["grant_type"],
         "assertion": jwtToken,
-        "scope": jwtConfig["scope"]
+        "scope": settings["scope"]
     }
     header={
-        "Authorization": f"Basic {MakeRequestKey(jwtConfig["consumerKey"],jwtConfig["consumerSecret"])}",
+        "Authorization": f"Basic {MakeRequestKey(settings["consumerKey"],settings["consumerSecret"])}",
         "Content-Type": "application/x-www-form-urlencoded"
     }
-    response=requests.post(jwtConfig["url"], headers=header, data=body, proxies=jwtConfig["proxies"], verify=False)
+    response=requests.post(settings["url"], headers=header, data=body, proxies=settings["proxies"], verify=False)
     responseJson=response.json()
     return responseJson
 

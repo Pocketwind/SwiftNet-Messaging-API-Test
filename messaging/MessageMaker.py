@@ -41,6 +41,9 @@ def MTMaker(sender, receiver, block, mtype):
 
     return result
 
+def MXParser(message):
+    pass
+
 def MessageMaker(downloadPath, outputPath, ackPath):
     with open(downloadPath, "r") as f:
         file=json.load(f)

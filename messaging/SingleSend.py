@@ -2,7 +2,7 @@ from email import message
 from urllib import request
 import requests, json, base64
 from Token import *
-
+from messaging.MessageMaker import *
 
 
 def SingleSend(messageData, settings):
@@ -23,12 +23,29 @@ def SingleSend(messageData, settings):
     }
     bodyString=json.dumps(body, separators=(',', ':'))
     url="https://api-test.swiftnet.sipn.swift.com/alliancecloud-test/v2/fin/messages"
-    signature=create_nr_signature(settings["jwtConfig"]["subject"], private, certificate, body, url)
+    signature=create_nr_signature(settings["subject"], private, certificate, body, url)
     headers={
         "Authorization":f"Bearer {accessToken}",
         "X-SWIFT-Signature":signature,
         "Content-Type":"application/json",
         "Accept":"application/json"
     }
-    response=requests.post(url, headers=headers, data=bodyString, proxies=settings["jwtConfig"]["proxies"], verify=False)
+    response=requests.post(url, headers=headers, data=bodyString, proxies=settings["proxies"], verify=False)
     return response.json()
+
+def SingleSendInterAct(messageData, settings):
+    pass
+
+def MessageCollector(path, settings):
+    print("---------------------------------------------------------------")
+    with open(path, 'r') as f:
+        data=f.read()
+    if data[0] == "{":
+        messageData=MTParser(data)
+        SingleSend(messageData, settings)
+    elif data[0] == "<":
+        messageData=MXParser(data)
+        SingleSendInterAct(messageData, settings)
+    os.remove(path)
+    print(f'File {path} is processed and removed.')
+    print("---------------------------------------------------------------")

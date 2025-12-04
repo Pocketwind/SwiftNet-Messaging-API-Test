@@ -35,9 +35,9 @@ jwtConfig = JWTConfig(
 
 
 
-def Auth(isJWTRequied, jwtConfig=None):
+def Auth(isJWTRequied, settings=None):
     if isJWTRequied:
-        accessToken = JWTAuth(jwtConfig)
+        accessToken = JWTAuth(settings)
         return accessToken
     else:
         accessToken = BasicAuth()
@@ -65,21 +65,21 @@ def BasicAuth():
     return token.accessToken, consumerCred
 """
 
-def JWTAuth(jwtConfig):
+def JWTAuth(settings):
     #token, result = ReadTokens(FILE_PATH_JWT)
     currentTime=int(time.time())
     creationTime=GetCreationTime()
 
     if creationTime==-1:    #Initialize
         print("Initializing New Access Token...")
-        accessToken, refreshToken = GenerateNewTokensWithJWT(jwtConfig)
+        accessToken, refreshToken = GenerateNewTokensWithJWT(settings)
         print(f"Access Token: {accessToken}")
         SetAccessToken(accessToken)
         SetRefreshToken(refreshToken)
         SetCreationTime(currentTime)
-    elif currentTime-creationTime > jwtConfig["expirationTime"]:
+    elif currentTime-creationTime > settings["expirationTime"]:
         print("Token Expired. Refreshing New Token.")
-        accessToken, refreshToken = RefreshToken(jwtConfig)
+        accessToken, refreshToken = RefreshToken(settings)
         print(f"Access Token: {accessToken}")
         SetAccessToken(accessToken)
         SetRefreshToken(refreshToken)

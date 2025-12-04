@@ -15,22 +15,13 @@ with open("settings.json","r") as f:
 
 
 def MessageInputCallback(path):
-    print("---------------------------------------------------------------")
-    with open(path, 'r') as f:
-        data=f.read()
-        messageData=MTParser(data)
-        #response = SingleSend(accessToken, messageData)
-        response = SingleSend(messageData, settings)
-    os.remove(path)
-    print(f'File {path} is processed and removed.')
-    print("---------------------------------------------------------------")
-    print()
+    MessageCollector(path, settings)
 def MessageMakerCallback(downloadPath):
     MessageMaker(downloadPath, settings["outputPath"], settings["ackPath"])
 
 
 try:
-    accessToken = auth.Auth(True, settings["jwtConfig"])
+    accessToken = auth.Auth(True, settings)
     #Initialize Threads
     #SingleSend Thread
     stop_event = threading.Event()
@@ -59,9 +50,9 @@ try:
     while True:
         #Main Thread
         #Auth Check
-        accessToken = auth.Auth(True, settings["jwtConfig"])
+        accessToken = auth.Auth(True, settings)
         SetAccessToken(accessToken)
-        time.sleep(settings["jwtConfig"]["expirationTime"])
+        time.sleep(settings["expirationTime"])
 
 except KeyboardInterrupt:
     print("---------------------------------------------------------------")
