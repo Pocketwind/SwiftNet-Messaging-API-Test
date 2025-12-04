@@ -30,6 +30,7 @@ def Download(accessToken, settings):
         "distribution-id":",".join(str(i) for i in reports)
     }
 
+    #메시지 파일 out
     if(len(messages) != 0):
         messageResponse=requests.get(messageUrl, headers=headers, params=messageParam, proxies=settings["proxies"], verify=False, timeout=5).json()
         messagePath=f"{settings["downloadPath"]}/{int(time.time())}.message"
@@ -38,7 +39,10 @@ def Download(accessToken, settings):
         print("Download - Messages Downloaded")
         for message in messages:
             SingleAck(accessToken, message, settings)
-    elif(len(reports) != 0):
+        return
+    
+    #Ack 파일 Out
+    if(len(reports) != 0):
         reportResponse=requests.get(reportUrl, headers=headers, params=reportParam, proxies=settings["proxies"], verify=False, timeout=5).json()
         reportPath=f"{settings["downloadPath"]}/{int(time.time())}.report"
         with open(reportPath, "w") as f:
@@ -46,8 +50,9 @@ def Download(accessToken, settings):
         print("Download - Reports Downloaded")
         for report in reports:
             SingleAck(accessToken, report, settings)
-    else:
-        print("Download - No Messages")
+
+    #아무것도 없으면 그냥 넘어가기
+    print("Download - No Messages")
 
 
 def ThreadDownload(settings, stopEvent):
