@@ -6,9 +6,25 @@ def MTParser(message):
     sender=lines[0][6:18]
     finType=lines[0][33:36]
     receiver=lines[0][36:48]
-    payload=lines[1:-1]
+    block4=""
+    start=0
+    end=0
+    #block4 시작 체크
+    for i, line in enumerate(lines):
+        if line[:-3] == "4:\n":
+            start=i
+            break
+    #block4 끝 체크
+    for i, line in enumerate(lines):
+        if line == "-}":
+            end=i
+            break
+    #MT전문에서 block4 추출
+    payload=lines[start+1:end]
+    #lines 배열 crlf로 붙이기
     payload="\r\n".join(payload)
     trn=""
+    #trn 체크
     for line in lines:
         if line.startswith(":20:"):
             trn=line[4:].strip()
@@ -74,7 +90,7 @@ def MTAckMaker(sender,receiver,status,reason,payload, mdate,mtype,reference):
         result+="0000000000}{2:I"
         result+=str(mtype)
         result+=str(receiver)
-        result+="N}{3:108:"
+        result+="N}{3:{108:"
         result+=str(reference)
         result+="}}{4:"
         result+=payload
