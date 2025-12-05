@@ -1,4 +1,5 @@
 import os, json, base64
+from datetime import datetime
 
 def MTParser(message):
     lines=message.split('\n')
@@ -41,6 +42,46 @@ def MTMaker(sender, receiver, block, mtype):
 
     return result
 
+def MTAckMaker(sender,receiver,status,reason,payload, mdate,mtype,reference):
+    #Response time 가끔 다르게 반환함
+    try:
+        dt=datetime.strptime(mdate,"%Y-%m-%dT%H:%M:%S.%fZ")
+    except:
+        dt=datetime.strptime(mdate,"%Y-%m-%dT%H:%M:%SZ")
+    result="{1:F21"
+    result+=sender
+    result+="0000000000}{4:{177:"
+    result+=dt.strftime("%y%m%d%H%M")
+    result+="}{451:"
+    #Nack
+    if status == "Rejected":
+        result+="1}{405:nnn}}{"
+        result+="1:F01"
+        result+=str(sender)
+        result+="0000000000}{2:I"
+        result+=str(mtype)
+        result+=str(receiver)
+        result+="N}{4:\n"
+        result+=f":20:{reference}\n"
+        result+=f":79:{reason}"
+        result+="\n-}"
+    #Ack
+    else:
+        result+="0}{108:"
+        result+=f"{reference}"
+        result+="}}{1:F01"
+        result+=str(sender)
+        result+="0000000000}{2:I"
+        result+=str(mtype)
+        result+=str(receiver)
+        result+="N}{3:108:"
+        result+=str(reference)
+        result+="}}{4:"
+        result+=payload
+        result+="\n-}"
+
+    return result
+
 def MXParser(message):
     pass
 
@@ -67,8 +108,14 @@ def MessageMaker(downloadPath, outputPath, ackPath):
             receiver=item["transmission_report"]["message"]["receiver"]
             mtype=item["transmission_report"]["message"]["message_type"].split(".")[1]
             messageId=item["distribution"]["id"]
+            reference=item["transmission_report"]["sender_reference"]
+            status=item["transmission_report"]["delivery_status"]
+            if status=="Rejected":
+                reason=item["transmission_report"]["rejection_reason"]
+            else:
+                reason=None
+            mdate=item["transmission_report"]["response_date"]
+            result=MTAckMaker(sender,receiver,status,reason,payload, mdate,mtype,reference)
             with open(f"{ackPath}/{messageId}.ack", "w") as f:
-                #f.write(payload)
-
-                json.dump(item, f, indent=4)
+                f.write(result)
         
