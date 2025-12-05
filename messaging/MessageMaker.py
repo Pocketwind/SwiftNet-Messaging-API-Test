@@ -38,7 +38,7 @@ def MTParser(message):
     }
     return data
 
-def MTMaker(sender, receiver, block, mtype):
+def MTMaker(sender, receiver, block, mtype, item):
     result="{1:F01"
     if len(sender) == 8:
         sender+="XXXX"
@@ -52,6 +52,9 @@ def MTMaker(sender, receiver, block, mtype):
     result+="1234567890}{2:O"
     result+=mtype
     result+=receiver
+    result+=f"{item["message"]["network_info"]["session_number"]:04d}"
+    result+=f"{item["message"]["network_info"]["sequence_number"]:06d}"
+    result+=str(item["message"]["network_info"]["local_output_time"])[2:-2]
     result+="N}{3:{111:001}}{4:"
     result+=block
     result+="\n-}"
@@ -112,7 +115,7 @@ def MessageMaker(downloadPath, outputPath, ackPath):
             receiver=item["message"]["receiver"]
             mtype=item["message"]["message_type"].split(".")[1]
             messageId=item["distribution"]["id"]
-            message=MTMaker(sender,receiver,payload,mtype)
+            message=MTMaker(sender,receiver,payload,mtype,item)
             with open(f"{outputPath}/{messageId}.out", "w") as f:
                 f.write(message)
         elif isinstance(item.get("transmission_report"), dict):

@@ -34,7 +34,7 @@ def SingleSend(messageData, settings):
     return response.json()
 
 def SingleSendInterAct(messageData, settings):
-    pass
+    
 
 def MessageCollector(path, settings):
     print("---------------------------------------------------------------")
