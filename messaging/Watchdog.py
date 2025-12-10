@@ -7,7 +7,7 @@ class FileEventHandler(FileSystemEventHandler):
         self.InputCallback = inputCallback
     def on_created(self, event):
         print(f"Watchdog - File detected: {event.src_path}")
-        time.sleep(0.01)  # Wait a moment to ensure file is fully written
+        time.sleep(0.1)  # Wait a moment to ensure file is fully written
         #print('Invoking input callback...')
         self.InputCallback(event.src_path)
 

@@ -1,5 +1,6 @@
 import os, json, base64
 from datetime import datetime
+from lxml import etree
 
 def MTParser(message):
     lines=message.split('\n')
@@ -101,40 +102,50 @@ def MTAckMaker(sender,receiver,status,reason,payload, mdate,mtype,reference):
 
     return result
 
-def MXParser(message):
-    pass
-
 def MessageMaker(downloadPath, outputPath, ackPath):
     with open(downloadPath, "r") as f:
         file=json.load(f)
     for item in file:
         if isinstance(item.get("message"), dict):
-            payload=base64.b64decode(item["message"]["payload"]).decode("utf-8")
-            payload=payload.replace("\r","")
-            sender=item["message"]["sender"]
-            receiver=item["message"]["receiver"]
-            mtype=item["message"]["message_type"].split(".")[1]
-            messageId=item["distribution"]["id"]
-            message=MTMaker(sender,receiver,payload,mtype,item)
-            with open(f"{outputPath}/{messageId}.out", "w") as f:
-                f.write(message)
+            if item["distribution"]["service"]=="fin":
+                payload=base64.b64decode(item["message"]["payload"]).decode("utf-8")
+                payload=payload.replace("\r","")
+                sender=item["message"]["sender"]
+                receiver=item["message"]["receiver"]
+                mtype=item["message"]["message_type"].split(".")[1]
+                messageId=item["distribution"]["id"]
+                message=MTMaker(sender,receiver,payload,mtype,item)
+                with open(f"{outputPath}/{messageId}.out", "w") as f:
+                    f.write(message)
+            elif item["distribution"]["service"]=="interAct":
+                payload=item["message"]["payload"]
+                payload=base64.b64decode(payload).decode("utf-8")
+                messageId=item["distribution"]["id"]
+                with open(f"{outputPath}/{messageId}.mxout", "w") as f:
+                    f.write(payload)
         elif isinstance(item.get("transmission_report"), dict):
             #ack maker 만들어야함
-            payload=base64.b64decode(item["transmission_report"]["message"]["payload"]).decode("utf-8")
-            payload=payload.replace("\r","")
-            item["transmission_report"]["message"]["payload"]=payload
-            sender=item["transmission_report"]["message"]["sender"]
-            receiver=item["transmission_report"]["message"]["receiver"]
-            mtype=item["transmission_report"]["message"]["message_type"].split(".")[1]
-            messageId=item["distribution"]["id"]
-            reference=item["transmission_report"]["sender_reference"]
-            status=item["transmission_report"]["delivery_status"]
-            if status=="Rejected":
-                reason=item["transmission_report"]["rejection_reason"]
-            else:
-                reason=None
-            mdate=item["transmission_report"]["response_date"]
-            result=MTAckMaker(sender,receiver,status,reason,payload, mdate,mtype,reference)
-            with open(f"{ackPath}/{messageId}.ack", "w") as f:
-                f.write(result)
-        
+            if item["distribution"]["service"]=="fin":
+                payload=base64.b64decode(item["transmission_report"]["message"]["payload"]).decode("utf-8")
+                payload=payload.replace("\r","")
+                item["transmission_report"]["message"]["payload"]=payload
+                sender=item["transmission_report"]["message"]["sender"]
+                receiver=item["transmission_report"]["message"]["receiver"]
+                mtype=item["transmission_report"]["message"]["message_type"].split(".")[1]
+                messageId=item["distribution"]["id"]
+                reference=item["transmission_report"]["sender_reference"]
+                status=item["transmission_report"]["delivery_status"]
+                if status=="Rejected":
+                    reason=item["transmission_report"]["rejection_reason"]
+                else:
+                    reason=None
+                mdate=item["transmission_report"]["response_date"]
+                result=MTAckMaker(sender,receiver,status,reason,payload, mdate,mtype,reference)
+                with open(f"{ackPath}/{messageId}.ack", "w") as f:
+                    f.write(result)
+            elif item["distribution"]["service"]=="interAct":
+                payload=item["transmission_report"]["transmission_report_payload"]
+                payload=base64.b64decode(payload).decode("utf-8")
+                messageId=item["distribution"]["id"]
+                with open(f"{ackPath}/{messageId}.mxack", "w") as f:
+                    f.write(payload)
