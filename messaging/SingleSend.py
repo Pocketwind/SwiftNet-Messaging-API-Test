@@ -102,15 +102,23 @@ def SingleSendInterAct(path, settings):
     return response
 
 def MessageCollector(path, settings):
+    print(path)
     print("---------------------------------------------------------------")
-    with open(path, 'r') as f:
-        data=f.read()
-    f.close()
-    if data[0] == "{":
-        messageData=MTParser(data)
-        SingleSend(messageData, settings)
-    elif data[0] == "<":
-        messageData=SingleSendInterAct(path, settings)
-    os.remove(path)
-    print(f'File {path} is processed and removed.')
+    if path[-2:] == "in":
+        with open(path, 'r') as f:
+            data=f.read()
+        f.close()
+        if data[0] == "{":
+            messageData=MTParser(data)
+            SingleSend(messageData, settings)
+        elif data[0] == "<":
+            messageData=SingleSendInterAct(path, settings)
+        os.remove(path)
+        print(f'Message {path} is processed and removed.')
+    elif path[-3:] == "zip":
+        #fileact
+        print("File")
+        #fileact end
+        os.remove(path)
+        print(f'File {path} is processed and removed.')
     print("---------------------------------------------------------------")
