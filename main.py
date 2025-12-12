@@ -4,6 +4,7 @@ from Preval import *
 from messaging.Retrieve import *
 from messaging.Download import *
 from messaging.SingleSend import *
+from messaging.FileAct import *
 from messaging.Watchdog import *
 from messaging.MessageMaker import *
 import json, threading, time, os, warnings
@@ -18,6 +19,8 @@ def MessageInputCallback(path):
     MessageCollector(path, settings)
 def MessageMakerCallback(downloadPath):
     MessageMaker(downloadPath, settings["outputPath"], settings["ackPath"])
+def FileInputCallback(path):
+    FileCollector(path, settings)
 
 
 try:
@@ -26,9 +29,14 @@ try:
     #SingleSend Thread
     stop_event = threading.Event()
     print("Starting SingleSend Thread...")
-    singleSendThread = threading.Thread(target=ThreadSingleSend, args=(settings["inputPath"], MessageInputCallback, stop_event))
+    singleSendThread = threading.Thread(target=ThreadWatchdog, args=(settings["inputPath"], MessageInputCallback, stop_event))
     singleSendThread.start()
     print("SingleSend Thread Started. Monitoring directory is:", settings["inputPath"])
+    #FileAct Thread
+    print("Starting FileAct Thread")
+    fileActThread = threading.Thread(target=ThreadWatchdog, args=(settings["fileActInputPath"], FileInputCallback, stop_event))
+    fileActThread.start()
+    print("FileAct Thread Started. Monitoring directory is:", settings["fileActInputPath"])
     #Distribution Thread
     print("Starting Distribution List Retrieval Loop...")
     distributionThread = threading.Thread(target=ThreadRetrieve, args=(settings, stop_event))
@@ -63,6 +71,10 @@ finally:
     stop_event.set()            
     singleSendThread.join(timeout=5) 
     print("SingleSend Thread Stopped.")
+    print("Stopping FileAct Thread...")
+    stop_event.set()            
+    fileActThread.join(timeout=5) 
+    print("SingleSend FileAct Stopped.")
     print("Stopping Distribution Thread...")
     stop_event.set()            
     distributionThread.join(timeout=5)

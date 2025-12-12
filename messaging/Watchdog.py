@@ -12,7 +12,7 @@ class FileEventHandler(FileSystemEventHandler):
         self.InputCallback(event.src_path)
 
 
-def ThreadSingleSend(path, inputCallback, stopEvent):
+def ThreadWatchdog(path, inputCallback, stopEvent):
     eventHandler=FileEventHandler(inputCallback)
     observer=Observer()
     observer.schedule(eventHandler, path, recursive=False)

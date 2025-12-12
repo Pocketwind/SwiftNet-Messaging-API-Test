@@ -1,10 +1,9 @@
-from email import message
-from smtplib import SMTPSenderRefused
 from urllib import request
 import requests, json, base64
 from Token import *
 from messaging.MessageMaker import *
 from lxml import etree
+import hashlib
 
 def SingleSend(messageData, settings):
     accessToken=GetAccessToken()
@@ -115,10 +114,4 @@ def MessageCollector(path, settings):
             messageData=SingleSendInterAct(path, settings)
         os.remove(path)
         print(f'Message {path} is processed and removed.')
-    elif path[-3:] == "zip":
-        #fileact
-        print("File")
-        #fileact end
-        os.remove(path)
-        print(f'File {path} is processed and removed.')
     print("---------------------------------------------------------------")
