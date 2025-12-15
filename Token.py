@@ -10,6 +10,19 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 import threading
 
+def RevokeToken(settings):
+    url=settings["revokeUrl"]
+    basicKey=MakeRequestKey(settings["consumerKey"],settings["consumerSecret"])
+    header={
+        "Authorization": f"Basic {MakeRequestKey(settings["consumerKey"],settings["consumerSecret"])}",
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+    body={
+        "token":GetAccessToken()
+    }
+    response=requests.post(url,headers=header,data=body,proxies=settings["proxies"],verify=False)
+    return response
+
 def RefreshToken(settings):
     requestKey=MakeRequestKey(settings["consumerKey"],settings["consumerSecret"])
     headers={

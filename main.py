@@ -85,5 +85,6 @@ finally:
     stop_event.set()
     messageMakerThread.join(timeout=5)
     print("MessageMaker Thread Stopped.")
-
-    
+    print("Revoking Access Token...")
+    RevokeToken(settings)
+    print("Success")    

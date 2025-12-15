@@ -26,7 +26,7 @@ def SingleSendFileAct(path, settings):
     keyValue=base64.b64encode(encryptionKey.encode('utf-8')).decode('utf-8')
     raw_md5 = hashlib.md5(encryptionKey.encode('utf-8')).digest()
     keyDigest = base64.b64encode(raw_md5).decode('utf-8')
-    senderReference=filename+str(int(time.time()))
+    senderReference=str(int(time.time()))+"."+filename
     serviceCode="swift.alliancecloud!p"
     requestor="ou=xxx,o=etpxkrss,o=swift"
     responder="ou=xxx,o=etpxkrss,o=swift"
