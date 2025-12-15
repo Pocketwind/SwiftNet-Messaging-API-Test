@@ -1,6 +1,4 @@
 import Authorization as auth
-from BIC_Details import *
-from Preval import *
 from messaging.Retrieve import *
 from messaging.Download import *
 from messaging.SingleSend import *

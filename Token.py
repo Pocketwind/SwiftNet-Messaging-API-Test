@@ -10,57 +10,6 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 import threading
 
-
-def ReadTokens(path="tokens.json"):
-    try:
-        with open(path, "r") as f:
-            tokenStr=f.read()
-            tokenJson=json.loads(tokenStr.replace("'", "\""))
-            refreshToken=tokenJson.get("refresh_token")
-            accessToken=tokenJson.get("access_token")
-            refreshTokenExpiresIn=tokenJson.get("refresh_token_expires_in")
-            expiresIn=tokenJson.get("expires_in")
-            createdAt=tokenJson.get("created_at")
-            token=TokenResponse(
-                refreshToken=refreshToken,
-                accessToken=accessToken,
-                refreshTokenExpiresIn=refreshTokenExpiresIn,
-                expiresIn=expiresIn,
-                createdAt=createdAt
-            )
-            return token, True
-            
-    except FileNotFoundError:
-        return None, False
-    
-def SaveTokens(token, path="tokens.json"):
-    tokens={
-        "refresh_token":token.refreshToken,
-        "access_token":token.accessToken,
-        "refresh_token_expires_in":token.refreshTokenExpiresIn,
-        "expires_in":token.expiresIn,
-        "created_at":token.createdAt
-    }
-    with open(path, "w") as f:
-        f.write(str(tokens))
-    
-
-def GenerateNewTokens(url, consumerCred):
-    accessTokenResponse=GetBearerToken(url, consumerCred)
-    refreshToken=accessTokenResponse.get("refresh_token")
-    accessToken=accessTokenResponse.get("access_token")
-    refreshTokenExpiresIn=accessTokenResponse.get("refresh_token_expires_in")
-    expiresIn=accessTokenResponse.get("expires_in")
-    createdAt=int(time.time())
-    token=TokenResponse(
-        refreshToken=refreshToken,
-        accessToken=accessToken,
-        refreshTokenExpiresIn=refreshTokenExpiresIn,
-        expiresIn=expiresIn,
-        createdAt=createdAt
-    )
-    return token
-
 def RefreshToken(settings):
     requestKey=MakeRequestKey(settings["consumerKey"],settings["consumerSecret"])
     headers={
@@ -80,8 +29,6 @@ def RefreshToken(settings):
     responseJson=response.json()
     refreshToken=responseJson.get("refresh_token")
     accessToken=responseJson.get("access_token")
-    #refreshTokenExpiresIn=responseJson.get("refresh_token_expires_in")
-    #expiresIn=responseJson.get("expires_in")
 
     return accessToken, refreshToken
 
@@ -109,8 +56,6 @@ def GenerateNewTokensWithJWT(settings):
     accessTokenResponse=GetBearerTokenWithJWT(settings)
     refreshToken=accessTokenResponse.get("refresh_token")
     accessToken=accessTokenResponse.get("access_token")
-    #refreshTokenExpiresIn=accessTokenResponse.get("refresh_token_expires_in")
-    #expiresIn=accessTokenResponse.get("expires_in")
     return accessToken, refreshToken
 
 def CreateJWT(settings):
