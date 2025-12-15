@@ -22,7 +22,7 @@ def SingleSend(messageData, settings):
         "payload": messagePayloadBase64
     }
     bodyString=json.dumps(body, separators=(',', ':'))
-    url="https://api-test.swiftnet.sipn.swift.com/alliancecloud-test/v2/fin/messages"
+    url=settings["messageUrl"]
     signature=create_nr_signature(settings["subject"], private, certificate, body, url)
     headers={
         "Authorization":f"Bearer {accessToken}",
@@ -31,10 +31,17 @@ def SingleSend(messageData, settings):
         "Accept":"application/json"
     }
     response=requests.post(url, headers=headers, data=bodyString, proxies=settings["proxies"], verify=False)
-    return response.json()
+    if response.status_code == 201:
+        return response.json()
+    else:
+        response=response.json()
+        print("---------------------------------------------------------------")
+        print(f"Error: {response["code"]}\n{response["text"]}")
+        print("---------------------------------------------------------------")
+        return response
 
 def SingleSendInterAct(path, settings):
-    url="https://api-test.swiftnet.sipn.swift.com/alliancecloud-test/v2/interact/messages"
+    url=settings["interActMessageUrl"]
     with open(path, "r") as f:
         tree=etree.parse(path)
     root=tree.getroot()
@@ -65,13 +72,6 @@ def SingleSendInterAct(path, settings):
     payload+=docStr
     payload+="</envelope:Envelope>"
 
-    print(senderRef)
-    print(serviceCode)
-    print(messageType)
-    print(requestor)
-    print(responder)
-    #print(payload)
-
     accessToken=GetAccessToken()
     with open(settings["privatePath"], "r") as f:
         private=f.read()
@@ -96,9 +96,15 @@ def SingleSendInterAct(path, settings):
         "Accept":"application/json"
     }
     
-    response=requests.post(url, headers=headers, data=bodyString, proxies=settings["proxies"], verify=False).json()
-    print(response)
-    return response
+    response=requests.post(url, headers=headers, data=bodyString, proxies=settings["proxies"], verify=False)
+    if response.status_code == 201:
+        return response.json()
+    else:
+        response=response.json()
+        print("---------------------------------------------------------------")
+        print(f"Error: {response["code"]}\n{response["text"]}")
+        print("---------------------------------------------------------------")
+        return response
 
 def MessageCollector(path, settings):
     print(path)

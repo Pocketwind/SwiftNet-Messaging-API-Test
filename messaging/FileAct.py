@@ -27,7 +27,7 @@ def SingleSendFileAct(path, settings):
     raw_md5 = hashlib.md5(encryptionKey.encode('utf-8')).digest()
     keyDigest = base64.b64encode(raw_md5).decode('utf-8')
     senderReference=str(int(time.time()))+"."+filename
-    serviceCode="swift.alliancecloud!p"
+    serviceCode="swift.generic.fast!p"
     requestor="ou=xxx,o=etpxkrss,o=swift"
     responder="ou=xxx,o=etpxkrss,o=swift"
     messageType="type.FileAct"
@@ -59,11 +59,11 @@ def SingleSendFileAct(path, settings):
             "file_logical_name":fileLogicalName
         }        
     }
-    print("----------------------------------------------")
-    bodyStr=json.dumps(body, indent=4)
+    print("---------------------------------------------------------------")
+    #bodyStr=json.dumps(body, indent=4)
     #print(bodyStr)
     bodyString=json.dumps(body, separators=(',', ':'))
-    url="https://api-test.swiftnet.sipn.swift.com/alliancecloud-test/v2/fileact/transfers"
+    url=settings["fileActUrl"]
     signature=create_nr_signature(settings["subject"], private, certificate, body, url)
     headers={
         "Authorization":f"Bearer {accessToken}",
@@ -74,7 +74,7 @@ def SingleSendFileAct(path, settings):
 
     #Initiate File Upload
     response=requests.post(url, headers=headers, data=bodyString, proxies=settings["proxies"], verify=False).json()
-    print(response)
+    #print(response)
     transferID=response["transfer_id"]
     uploadUrl=response["file_transfer_response"]["signed_urls"][0]["url"]
 
@@ -115,14 +115,14 @@ def SingleSendFileAct(path, settings):
     #print("FileAct - upload response text:", r.text)
 
     #complete upload
-    url="https://api-test.swiftnet.sipn.swift.com/alliancecloud-test/v2/fileact/transfers/{transfer-id}/acks"
+    url=settings["fileActAckUrl"]
     url=url.replace("{transfer-id}",transferID)
     path={
         "transfer-id":transferID
     }
     response=requests.post(url, headers=headers, params=path, data="{}",proxies=settings["proxies"], verify=False)
     print(response.json())
-    print("----------------------------------------------")
+    print("---------------------------------------------------------------")
 
     return None
 

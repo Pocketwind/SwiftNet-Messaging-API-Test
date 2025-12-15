@@ -2,17 +2,17 @@ import requests, time, json, os, tempfile
 from Token import *
 
 
-def Retrieve(accessToken, limit, proxies):
-    url="https://api-test.swiftnet.sipn.swift.com/alliancecloud-test/v2/distributions"
+def Retrieve(accessToken, settings):
+    url=settings["distUrl"]
     headers={
         "Accept":"application/json",
         "Authorization":f"Bearer {accessToken}"
     }
     params={
-        "limit":limit,
+        "limit":settings["maxDistSize"],
         "offset":0
     }
-    response=requests.get(url, headers=headers, params=params, proxies=proxies, verify=False).json()
+    response=requests.get(url, headers=headers, params=params, proxies=settings["proxies"], verify=False).json()
     return response
 
 def write_atomic(path, data):
@@ -37,7 +37,7 @@ def ThreadRetrieve(settings, stopEvent):
     while not stopEvent.is_set():
         try:
             accessToken=GetAccessToken()
-            distributionList = Retrieve(accessToken, settings["maxDistSize"], settings["proxies"])
+            distributionList = Retrieve(accessToken, settings)
             check=distributionList.get("distributions")
             if not isinstance(check, dict):
                 print("Distribution - List Updated.")

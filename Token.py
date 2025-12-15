@@ -220,7 +220,7 @@ def create_nr_signature(sub, private_key_pem, certificate_pem, request_body, url
 
 
 #Token Manager Thread------------------------------
-
+_lock=threading.Lock()
 _accessToken=""
 _refreshToken=""
 _consumerCred=""
@@ -228,26 +228,36 @@ _consumerKey=""
 _creationTime=-1
 def SetAccessToken(token):
     global _accessToken
-    _accessToken=token
+    with _lock:
+        _accessToken=token
 def GetAccessToken():
-    return _accessToken
+    with _lock:
+        return _accessToken
 def SetRefreshToken(token):
     global _refreshToken
-    _refreshToken=token
+    with _lock:
+        _refreshToken=token
 def GetRefreshToken():
-    return _refreshToken
+    with _lock:
+        return _refreshToken
 def SetConsumerCred(cred):
     global _consumerCred
-    _consumerCred=cred
+    with _lock:
+        _consumerCred=cred
 def GetConsumerCred():
-    return _consumerCred
+    with _lock:
+        return _consumerCred
 def SetConsumerKey(cred):
     global _consumerKey
-    _consumerKey=cred
+    with _lock:
+        _consumerKey=cred
 def GetConsumerKey():
-    return _consumerKey
+    with _lock:
+        return _consumerKey
 def SetCreationTime(t):
     global _creationTime
-    _creationTime=t
+    with _lock:
+        _creationTime=t
 def GetCreationTime():
-    return _creationTime
+    with _lock:
+        return _creationTime

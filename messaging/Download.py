@@ -24,11 +24,11 @@ def Download(accessToken, settings):
             interactMessages.append(i["id"])
         elif mtype == "transmissionReport" and mservice == "interAct":
             interactReports.append(i["id"])
-    print(f"{len(messages)} {len(reports)} {len(interactMessages)} {len(interactReports)}")
-    reportUrl="https://api-test.swiftnet.sipn.swift.com/alliancecloud-test/v2/fin/transmission-reports"
-    messageUrl="https://api-test.swiftnet.sipn.swift.com/alliancecloud-test/v2/fin/messages"
-    interactReportUrl="https://api-test.swiftnet.sipn.swift.com/alliancecloud-test/v2/interact/transmission-reports"
-    interactMessageUrl="https://api-test.swiftnet.sipn.swift.com/alliancecloud-test/v2/interact/messages"
+    #print(f"{len(messages)} {len(reports)} {len(interactMessages)} {len(interactReports)}")
+    reportUrl=settings["reportUrl"]
+    messageUrl=settings["messageUrl"]
+    interactReportUrl=settings["interActReportUrl"]
+    interactMessageUrl=settings["interActMessageUrl"]
     headers={
         "Accept":"application/json",
         "Authorization":f"Bearer {accessToken}"
@@ -46,6 +46,33 @@ def Download(accessToken, settings):
         "distribution-id":",".join(str(i) for i in interactReports)
     }
 
+    #interact Ack 파일 Out
+    if(len(interactReports) != 0):
+        reportResponse=requests.get(interactReportUrl, headers=headers, params=mxreportParam, proxies=settings["proxies"], verify=False, timeout=5).json()
+        reportPath=f"{settings["downloadPath"]}/{int(time.time())}.mxreport"
+        with open(reportPath, "w") as f:
+            json.dump(reportResponse, f, indent=4)
+        print("Download - MX Reports Downloaded")
+        for report in interactReports:
+            SingleAck(accessToken, report, settings)    
+    #Ack 파일 Out
+    if(len(reports) != 0):
+        reportResponse=requests.get(reportUrl, headers=headers, params=reportParam, proxies=settings["proxies"], verify=False, timeout=5).json()
+        reportPath=f"{settings["downloadPath"]}/{int(time.time())}.report"
+        with open(reportPath, "w") as f:
+            json.dump(reportResponse, f, indent=4)
+        print("Download - Reports Downloaded")
+        for report in reports:
+            SingleAck(accessToken, report, settings)
+    #interact message
+    if(len(interactMessages) != 0):
+        messageResponse=requests.get(interactMessageUrl, headers=headers, params=mxmessageParam, proxies=settings["proxies"], verify=False, timeout=5).json()
+        messagePath=f"{settings["downloadPath"]}/{int(time.time())}.mxmessage"
+        with open(messagePath, "w") as f:
+            json.dump(messageResponse, f, indent=4)
+        print("Download - MX Messages Downloaded")
+        for message in interactMessages:
+            SingleAck(accessToken, message, settings)
     #메시지 파일 out
     if(len(messages) != 0):
         messageResponse=requests.get(messageUrl, headers=headers, params=messageParam, proxies=settings["proxies"], verify=False, timeout=5).json()
@@ -56,36 +83,6 @@ def Download(accessToken, settings):
         for message in messages:
             SingleAck(accessToken, message, settings)
         return
-    
-    #Ack 파일 Out
-    if(len(reports) != 0):
-        reportResponse=requests.get(reportUrl, headers=headers, params=reportParam, proxies=settings["proxies"], verify=False, timeout=5).json()
-        reportPath=f"{settings["downloadPath"]}/{int(time.time())}.report"
-        with open(reportPath, "w") as f:
-            json.dump(reportResponse, f, indent=4)
-        print("Download - Reports Downloaded")
-        for report in reports:
-            SingleAck(accessToken, report, settings)
-    
-    #interact message
-    if(len(interactMessages) != 0):
-        messageResponse=requests.get(interactMessageUrl, headers=headers, params=mxmessageParam, proxies=settings["proxies"], verify=False, timeout=5).json()
-        messagePath=f"{settings["downloadPath"]}/{int(time.time())}.mxmessage"
-        with open(messagePath, "w") as f:
-            json.dump(messageResponse, f, indent=4)
-        print("Download - MX Messages Downloaded")
-        for message in interactMessages:
-            SingleAck(accessToken, message, settings)
-
-    #interact report
-    if(len(interactReports) != 0):
-        reportResponse=requests.get(interactReportUrl, headers=headers, params=mxreportParam, proxies=settings["proxies"], verify=False, timeout=5).json()
-        reportPath=f"{settings["downloadPath"]}/{int(time.time())}.mxreport"
-        with open(reportPath, "w") as f:
-            json.dump(reportResponse, f, indent=4)
-        print("Download - MX Reports Downloaded")
-        for report in interactReports:
-            SingleAck(accessToken, report, settings)
 
     #아무것도 없으면 그냥 넘어가기
     print("Download - No Messages")
@@ -113,7 +110,7 @@ def SingleAck(accessToken, id, settings):
         "id":id
     }
     
-    ackUrl="https://api-test.swiftnet.sipn.swift.com/alliancecloud-test/v2/distributions/<id>/acks"
+    ackUrl=settings["ackUrl"]
     print("Download - Acknowledging ID:", id)
     ackUrl=ackUrl.replace("<id>",str(id))
     response=requests.post(ackUrl, headers=headers, params=param, proxies=settings["proxies"], verify=False)
