@@ -11,6 +11,8 @@ def Download(accessToken, settings):
     reports=[]
     interactMessages=[]
     interactReports=[]
+    fileactReports=[]
+    fileactMessages=[]
     for i in dist:
         if i["transmission_possible_duplicate"]:
             continue
@@ -24,11 +26,15 @@ def Download(accessToken, settings):
             interactMessages.append(i["id"])
         elif mtype == "transmissionReport" and mservice == "interAct":
             interactReports.append(i["id"])
+        elif mtype == "transmissionReport" and mservice == "fileAct":
+            fileactReports.append(i["id"])
+
     #print(f"{len(messages)} {len(reports)} {len(interactMessages)} {len(interactReports)}")
     reportUrl=settings["reportUrl"]
     messageUrl=settings["messageUrl"]
     interactReportUrl=settings["interActReportUrl"]
     interactMessageUrl=settings["interActMessageUrl"]
+    fileactReportUrl=settings["fileActReportUrl"]
     headers={
         "Accept":"application/json",
         "Authorization":f"Bearer {accessToken}"
@@ -45,6 +51,9 @@ def Download(accessToken, settings):
     mxreportParam={
         "distribution-id":",".join(str(i) for i in interactReports)
     }
+    filereportParam={
+        "distribution-id":",".join(str(i) for i in fileactReports)
+    }
 
     #interact Ack 파일 Out
     if(len(interactReports) > 0):
@@ -55,7 +64,7 @@ def Download(accessToken, settings):
                 json.dump(reportResponse, f, indent=4)
             print("Download - MX Reports Downloaded")
             MultiAck(accessToken,interactReports,settings)  
-    #Ack 파일 Out
+    #FIN Ack 파일 Out
     if(len(reports) > 0):
         reportResponse=requests.get(reportUrl, headers=headers, params=reportParam, proxies=settings["proxies"], verify=False, timeout=5).json()
         if(len(reportResponse) > 0):
@@ -63,9 +72,7 @@ def Download(accessToken, settings):
             with open(reportPath, "w") as f:
                 json.dump(reportResponse, f, indent=4)
             print("Download - Reports Downloaded")
-            MultiAck(accessToken,reports,settings)  
-            #for report in reports:
-            #    SingleAck(accessToken, report, settings)
+            MultiAck(accessToken,reports,settings)
     #interact message
     if(len(interactMessages) > 0):
         messageResponse=requests.get(interactMessageUrl, headers=headers, params=mxmessageParam, proxies=settings["proxies"], verify=False, timeout=5).json()
@@ -74,10 +81,8 @@ def Download(accessToken, settings):
             with open(messagePath, "w") as f:
                 json.dump(messageResponse, f, indent=4)
             print("Download - MX Messages Downloaded")
-            MultiAck(accessToken,interactMessages,settings)  
-            #for message in interactMessages:
-            #    SingleAck(accessToken, message, settings)
-    #메시지 파일 out
+            MultiAck(accessToken,interactMessages,settings)
+    #FIN 파일 out
     if(len(messages) > 0):
         messageResponse=requests.get(messageUrl, headers=headers, params=messageParam, proxies=settings["proxies"], verify=False, timeout=5).json()
         if(len(messageResponse) > 0):
@@ -85,9 +90,16 @@ def Download(accessToken, settings):
             with open(messagePath, "w") as f:
                 json.dump(messageResponse, f, indent=4)
             print("Download - Messages Downloaded")
-            MultiAck(accessToken,messages,settings)  
-            #for message in messages:
-            #    SingleAck(accessToken, message, settings)
+            MultiAck(accessToken,messages,settings)
+    #FileAct Report (Ack)
+    if(len(fileactReports) > 0):
+        reportResponse=requests.get(fileactReportUrl, headers=headers, params=filereportParam, proxies=settings["proxies"], verify=False, timeout=5).json()
+        if(len(reportResponse) > 0):
+            reportPath=f"{settings["downloadPath"]}/{int(time.time())}.filereport"
+            with open(reportPath, "w") as f:
+                json.dump(reportResponse, f, indent=4)
+            print("Download - File Reports Downloaded")
+            MultiAck(accessToken,fileactReports,settings)
 
     #아무것도 없으면 그냥 넘어가기
     #print("Download - No Messages")
