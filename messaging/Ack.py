@@ -29,3 +29,19 @@ def MultiAck(accessToken, ids, settings):
     url=settings["distUrl"]
     response=requests.patch(url,headers=headers,json=ackList,proxies=settings["proxies"],verify=False)
     print(f"Download - Acked {len(ids)}")
+
+def MultiNak(accessToken, ids, reason, settings):
+    headers={
+        "Accept":"application/json",
+        "Authorization":f"Bearer {accessToken}"
+    }
+    nackList=[]
+    for id in ids:
+        nackList.append({
+            "id":id,
+            "status":"Nak",
+            "status_update_message":reason
+        })
+    url=settings["distUrl"]
+    response=requests.patch(url,headers=headers,json=nackList,proxies=settings["proxies"],verify=False)
+    print(f"Download - Nacked {len(ids)}")
