@@ -1,7 +1,8 @@
 import requests, jwt, base64, time, math, random
 from Token import *
 
-
+#토큰 관리 위한 파트
+#Messaging에서 JWT 방식 사용
 def Auth(isJWTRequied, settings=None):
     if isJWTRequied:
         accessToken = JWTAuth(settings)
@@ -10,8 +11,10 @@ def Auth(isJWTRequied, settings=None):
         accessToken = BasicAuth(settings)
         return accessToken
 
+#현재시간과 발급시간 비교해 만료시간이면 Refresh
+#or 첫 발급이면 신규 발급
+#or 할거 없으면 넘어감
 def JWTAuth(settings):
-    #token, result = ReadTokens(FILE_PATH_JWT)
     currentTime=int(time.time())
     creationTime=GetCreationTime()
 
@@ -31,6 +34,7 @@ def JWTAuth(settings):
 
     return GetAccessToken()
 
+#Messaging에서는 필요없는 파트
 def BasicAuth(settings):
     key=settings["consumerKey"]
     secret=settings["consumerSecret"]

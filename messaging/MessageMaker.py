@@ -2,6 +2,8 @@ import os, json, base64
 from datetime import datetime
 from lxml import etree
 
+#Input MT 메시지 Block4만 추출하기
+#보낼때 block4 값만 보낼수있음
 def MTParser(message):
     lines=message.split('\n')
     sender=lines[0][6:18]
@@ -39,6 +41,9 @@ def MTParser(message):
     }
     return data
 
+#Output MT 메시지
+#download한 데이터에서 실제 MT 전문 만들어내기
+#MT 포맷 맞게 했는지 확인 필요함
 def MTMaker(sender, receiver, block, mtype, item):
     result="{1:F01"
     if len(sender) == 8:
@@ -62,6 +67,9 @@ def MTMaker(sender, receiver, block, mtype, item):
 
     return result
 
+#MT Ack 전문 만들기
+#다운로드한 Transmission Report에서 Ack 만들어내기
+#Ack 구조를 잘 몰라서 패스
 def MTAckMaker(sender,receiver,status,reason,payload, mdate,mtype,reference):
     #Response time 가끔 다르게 반환함
     try:
@@ -102,6 +110,8 @@ def MTAckMaker(sender,receiver,status,reason,payload, mdate,mtype,reference):
 
     return result
 
+#download한 데이터에서 실제 전문 추출
+#Payload에 값이 들어있지만 Base64 인코딩 되어있으므로 디코딩 후 위의 파서로 전문 제작
 def MessageMaker(downloadPath, outputPath, ackPath):
     with open(downloadPath, "r") as f:
         file=json.load(f)
@@ -149,3 +159,4 @@ def MessageMaker(downloadPath, outputPath, ackPath):
                 messageId=item["distribution"]["id"]
                 with open(f"{ackPath}/{messageId}.mxack", "w") as f:
                     f.write(payload)
+                    

@@ -6,14 +6,24 @@ from messaging.MessageMaker import *
 from lxml import etree
 import hashlib
 
+#사내 ETPXKRSS는 FileAct 미가입으로 Upload, Ack까지만 가능 -> 파일 Send는 가능하지만 Nack 떨어짐
+#FileAct는 3개 파트로 분리되어있음
+#Initiate -> Upload -> Complete
+#Initiate: 파일의 대략적인 정보와 Requestor, Responder 정보 
+#Upload: 실제 파일 Alliance로 업로드하는 파트(S3 Bucket PUT 참조 - 인터넷 검색하면 나옴)
+#Complete: 파일 업로드 종료 알림 -> 실제 FileAct 메시지 생성
 def SingleSendFileAct(path, settings):
+    #1. 토큰, 인증서 값 읽어오기
     accessToken=GetAccessToken()
     with open(settings["privatePath"], "r") as f:
         private=f.read()
     with open(settings["certificatePath"], "r") as f:
         certificate=f.read()
+    
+    #2. 파일 이름 읽어오기
     filename = path.split("\\")[-1]
-    # compute file size and raw MD5, then base64-encode the raw digest
+
+    #3. 파일 크기와 MD5(해시) 계산 후 Base64 인코딩
     fileSize = os.path.getsize(path)
     md5_hasher = hashlib.md5()
     with open(path, "rb") as rf:
@@ -21,18 +31,21 @@ def SingleSendFileAct(path, settings):
             md5_hasher.update(chunk)
     file_digest_raw = md5_hasher.digest()
     fileDigestBase64 = base64.b64encode(file_digest_raw).decode('ascii')  # 24 chars (with ==)
+
+    #4. Initiate시 필요한 값들 정의
     actionType="upload" #or download
-    encryptionKey="13c2f4184wjmuygjyghfs5fd5xc5xv6s" #32char
+    encryptionKey="13c2f4184wjmuygjyghfs5fd5xc5xv6s" #AES256 암호화 시 사용할 32글자(고정) 키
     keyValue=base64.b64encode(encryptionKey.encode('utf-8')).decode('utf-8')
     raw_md5 = hashlib.md5(encryptionKey.encode('utf-8')).digest()
     keyDigest = base64.b64encode(raw_md5).decode('utf-8')
     senderReference=str(int(time.time()))+"."+filename
-    serviceCode="swift.generic.fast!p"
-    requestor="ou=xxx,o=etpxkrss,o=swift"
+    serviceCode="swift.generic.fast!p"  #사내 서버 미가입으로 사용 불가
+    requestor="ou=xxx,o=etpxkrss,o=swift"   
     responder="ou=xxx,o=etpxkrss,o=swift"
-    messageType="type.FileAct"
+    messageType="type.FileAct"  #FileAct라 메시지 타입은 임의로 설정함
     fileLogicalName=filename
     body={
+        #파일 정보
         "file_transfer_request":{
             "file_attributes":{
                 "file_name":filename,
@@ -50,6 +63,7 @@ def SingleSendFileAct(path, settings):
                 "key_digest":keyDigest
             }
         },
+        #송수신 정보
         "companion_info":{
             "sender_reference":senderReference,
             "service_code":serviceCode,
@@ -62,8 +76,13 @@ def SingleSendFileAct(path, settings):
     print("---------------------------------------------------------------")
     #bodyStr=json.dumps(body, indent=4)
     #print(bodyStr)
-    bodyString=json.dumps(body, separators=(',', ':'))
+    bodyString=json.dumps(body, separators=(',', ':'))  #트래픽 줄이기 위해 공백 제거 -> 안하면 API콜 Reject
     url=settings["fileActUrl"]
+
+    #5. !!!중요한부분!!!
+    #Access를 통한 전송이 아니기 때문에 NR Signature로 무결성, 암호화 검증함
+    #쿼리 보낼 Body, 공개키, 개인키, url을 사용해 실제 사용자가 맞는지 확인
+    #아마 가장 많이 오류 날 부분으로 예상됨
     signature=create_nr_signature(settings["subject"], private, certificate, body, url)
     headers={
         "Authorization":f"Bearer {accessToken}",
@@ -72,24 +91,21 @@ def SingleSendFileAct(path, settings):
         "Accept":"application/json"
     }
 
-    #Initiate File Upload
+    #6. FileAct Initiate
     response=requests.post(url, headers=headers, data=bodyString, proxies=settings["proxies"], verify=False).json()
-    #print(response)
+
     transferID=response["transfer_id"]
     uploadUrl=response["file_transfer_response"]["signed_urls"][0]["url"]
 
-    #Payload
-    #PUT?
     signed = response["file_transfer_response"]["signed_urls"][0]
     uploadUrl = signed["url"]
     method = signed.get("method", "PUT").upper()
     fields = signed.get("fields")
     expected_ct = signed.get("content_type")
 
-    #print("FileAct - signed object:", json.dumps(signed, indent=2))
-    #print("FileAct - uploadUrl:", uploadUrl, "method:", method)
-
-    # Do not add headers not included in the signature.
+    #7. Upload 
+    #Initiate시 URL 반환 -> S3 Bucket 방식으로 파일 업로드용
+    #아래 코드는 PUT, POST 방식 구분 후 실제 파일 업로드하는 부분임
     with open(path, "rb") as f:
         if fields:
             # POST form (S3 POST-style): include provided fields and file
@@ -111,21 +127,23 @@ def SingleSendFileAct(path, settings):
         else:
             r = requests.post(uploadUrl, data=f, proxies=settings.get("proxies"), verify=False)
 
-    #print("FileAct - upload response status:", r.status_code)
-    #print("FileAct - upload response text:", r.text)
+    #status_code로 예외 처리 추가 필요함
 
-    #complete upload
+    #8. FileAct 업로드 Complete
     url=settings["fileActAckUrl"]
     url=url.replace("{transfer-id}",transferID)
     path={
         "transfer-id":transferID
     }
+    #Complete 요청 시 body값에 빈 딕셔너리 값 넣어줘야 에러가 안남 -> 버그?
     response=requests.post(url, headers=headers, params=path, data="{}",proxies=settings["proxies"], verify=False)
     print(response.json())
     print("---------------------------------------------------------------")
 
     return None
 
+#파일 감지 파트
+#파일 처리 후 삭제하는 부분임 -> 실제 구현한다면 삭제 없이 백업 폴더로 옮기는게 좋을듯
 def FileCollector(path, settings):
     print(path)
     print("---------------------------------------------------------------")
@@ -136,7 +154,7 @@ def FileCollector(path, settings):
     print(f'File {path} is processed and removed.')
     print("---------------------------------------------------------------")
 
-
+#MD5 계산
 def getHash(path, blocksize=8192):
     afile = open(path, 'rb')
     hasher = hashlib.md5()

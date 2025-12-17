@@ -1,7 +1,8 @@
 import requests, time, json, os, tempfile
 from Token import *
 
-
+#distributions - Retrieve the list of available distributions from Alliance Cloud.
+#Ready to be distributed 인 메시지 리스트 불러오기
 def Retrieve(accessToken, settings):
     url=settings["distUrl"]
     headers={
@@ -15,6 +16,7 @@ def Retrieve(accessToken, settings):
     response=requests.get(url, headers=headers, params=params, proxies=settings["proxies"], verify=False).json()
     return response
 
+#파일로 읽고쓰기때문에 Deadlock 발생 -> 임시파일로 atomic하게 저장하면서 방지
 def write_atomic(path, data):
     dirpath = os.path.dirname(os.path.abspath(path)) or "."
     os.makedirs(dirpath, exist_ok=True)
@@ -33,6 +35,8 @@ def write_atomic(path, data):
             pass
         raise
 
+#Retrieve 하는 스레드 정의
+#실시간으로 업데이트 필요함 -> 스레드로 만들어서 대체
 def ThreadRetrieve(settings, stopEvent):
     while not stopEvent.is_set():
         try:
