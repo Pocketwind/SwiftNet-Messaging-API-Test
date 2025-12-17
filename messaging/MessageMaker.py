@@ -1,4 +1,4 @@
-import os, json, base64
+import json, base64
 from datetime import datetime
 from lxml import etree
 

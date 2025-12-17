@@ -1,4 +1,4 @@
-import requests, json, time, base64
+import requests
 
 #distributions - ACK a distribution
 #실제로 메시지 파일을 다운로드 한 후 보내는 쿼리

@@ -1,7 +1,5 @@
-import urllib.parse
-import urllib.parse
-import requests, json, base64
-from Token import *
+import requests, json, base64, os
+from Auth.Token import *
 from messaging.MessageMaker import *
 from lxml import etree
 import hashlib

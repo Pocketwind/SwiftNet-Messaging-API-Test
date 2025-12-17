@@ -1,4 +1,4 @@
-import Authorization as auth
+import Auth.Authorization as auth
 from messaging.Retrieve import *
 from messaging.Download import *
 from messaging.SingleSend import *
