@@ -61,7 +61,7 @@ def MTMaker(sender, receiver, block, mtype, item):
     result+=f"{item["message"]["network_info"]["session_number"]:04d}"
     result+=f"{item["message"]["network_info"]["sequence_number"]:06d}"
     result+=str(item["message"]["network_info"]["local_output_time"])[2:-2]
-    result+="N}{3:{111:001}}{4:"
+    result+="N}{3:{111:001}}{4:\n"
     result+=block
     result+="\n-}"
 

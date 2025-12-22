@@ -33,7 +33,7 @@ def RevokeToken(settings):
 #   - Body: 사용했던 Access Token의 Refresh Token, <grant_type> 값
 #반환:
 #   - access_token: 새로 발급받은 Access Token
-#   - refresh_token: 위의 새로 받은 토큰의 Resfresh용 토큰
+#   - refresh_token: 위의 새로 받은 토큰의 Refresh용 토큰
 def RefreshToken(settings):
     requestKey=MakeRequestKey(settings["consumerKey"],settings["consumerSecret"])
     headers={
