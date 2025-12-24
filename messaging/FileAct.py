@@ -1,8 +1,8 @@
-import requests, json, base64, os
+import requests, json, base64, os, hashlib
 from Auth.Token import *
 from messaging.MessageMaker import *
 from lxml import etree
-import hashlib
+from Data.globalData import *
 
 #사내 ETPXKRSS는 FileAct 미가입으로 Upload, Ack까지만 가능 -> 파일 Send는 가능하지만 Nack 떨어짐
 #FileAct는 3개 파트로 분리되어있음

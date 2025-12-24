@@ -1,5 +1,6 @@
 import base64, time
 from Auth.Token import *
+from Data.globalData import *
 
 #토큰 관리 위한 파트
 #Messaging에서 JWT 방식 사용

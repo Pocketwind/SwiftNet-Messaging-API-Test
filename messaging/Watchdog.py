@@ -1,6 +1,7 @@
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import time
+from Data.globalData import *
 
 #파일 감지 시 사용하는 이벤트 처리 파트
 class FileEventHandler(FileSystemEventHandler):

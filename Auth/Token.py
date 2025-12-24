@@ -1,9 +1,9 @@
-import json, base64, requests, time, jwt, random, re
+import json, base64, requests, time, jwt, random, re, hashlib
 from urllib.parse import urlparse
-import hashlib
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
-import threading
+from Data.globalData import *
+import Auth.Authorization as auth
 
 #토큰 폐기
 #API 예제 Postman에만 있음
@@ -253,46 +253,15 @@ def create_nr_signature(sub, private_key_pem, certificate_pem, request_body, url
     return jwt_token
 
 
-#Token Manager Thread------------------------------
-#토큰 값들 여러 스레드에서 돌려쓰기 때문에 Deadlock 방지 위한 Locking, 전역변수화
-_lock=threading.Lock()
-_accessToken=""
-_refreshToken=""
-_consumerCred=""
-_consumerKey=""
-_creationTime=-1
-def SetAccessToken(token):
-    global _accessToken
-    with _lock:
-        _accessToken=token
-def GetAccessToken():
-    with _lock:
-        return _accessToken
-def SetRefreshToken(token):
-    global _refreshToken
-    with _lock:
-        _refreshToken=token
-def GetRefreshToken():
-    with _lock:
-        return _refreshToken
-def SetConsumerCred(cred):
-    global _consumerCred
-    with _lock:
-        _consumerCred=cred
-def GetConsumerCred():
-    with _lock:
-        return _consumerCred
-def SetConsumerKey(cred):
-    global _consumerKey
-    with _lock:
-        _consumerKey=cred
-def GetConsumerKey():
-    with _lock:
-        return _consumerKey
-def SetCreationTime(t):
-    global _creationTime
-    with _lock:
-        _creationTime=t
-def GetCreationTime():
-    with _lock:
-        return _creationTime
+
+
+def ThreadTokenRefresh(settings, stopEvent):
+    while not stopEvent.is_set():
+        # 만약 stopEvent가 set되면 즉시 True 반환 -> break로 루프 종료
+        if stopEvent.wait(settings["expirationTime"]):
+            break
+        try:
+            accessToken = auth.Auth(True, settings)
+            SetAccessToken(accessToken)
+        except Exception as e:
+            print("Token Refresh - ThreadTokenRefresh error:", type(e).__name__, e)

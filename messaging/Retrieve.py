@@ -1,5 +1,6 @@
 import requests, time, json, os, tempfile
 from Auth.Token import *
+from Data.globalData import *
 
 #distributions - Retrieve the list of available distributions from Alliance Cloud.
 #Ready to be distributed 인 메시지 리스트 불러오기

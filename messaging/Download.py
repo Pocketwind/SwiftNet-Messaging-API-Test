@@ -1,6 +1,6 @@
 import requests, json, time
 from messaging.Ack import *
-from Auth.Token import GetAccessToken
+from Data.globalData import *
 
 #Download one or several FIN, Interact, FileAct messages ready to be distributed.
 #Distribution List 에서 다운로드가 필요한 메시지 파일 검사 후 다운로드

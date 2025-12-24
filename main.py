@@ -6,6 +6,7 @@ from messaging.FileAct import *
 from messaging.Watchdog import *
 from messaging.MessageMaker import *
 import json, threading, time, os, warnings
+from Data.globalData import *
 warnings.filterwarnings("ignore", message="Unverified HTTPS request")
 
 #settings에서 설정 값 읽어오기
@@ -26,59 +27,48 @@ def FileInputCallback(path):
 try:
     #Access Token(JWT) 받아오기 위한 Auth
     accessToken = auth.Auth(True, settings)
+    SetAccessToken(accessToken)
     #Ctrl+C로 종료시 이벤트 
     stop_event = threading.Event()
     #스레드 시작
     #파일 탐지 위한 스레드 정의/시작
     #SingleSend Thread
     if settings["singleSendService"]:
-        print("---------------------------------------------------------------")
         print("Starting SingleSend Service...")
         singleSendThread = threading.Thread(target=ThreadWatchdog, args=(settings["inputPath"], MessageInputCallback, stop_event))
         singleSendThread.start()
-        print("SingleSend Service Started. Monitoring directory is:\n", settings["inputPath"])
-        print("---------------------------------------------------------------")
+        print("SingleSend Service Started. Monitoring directory is: ", settings["inputPath"])
     #FileAct Thread
     if settings["fileActService"]:
-        print("---------------------------------------------------------------")
         print("Starting FileAct Service")
         fileActThread = threading.Thread(target=ThreadWatchdog, args=(settings["fileActInputPath"], FileInputCallback, stop_event))
         fileActThread.start()
-        print("FileAct Service Started. Monitoring directory is:\n", settings["fileActInputPath"])
-        print("---------------------------------------------------------------")
+        print("FileAct Service Started. Monitoring directory is: ", settings["fileActInputPath"])
     #Distribution Thread
     if settings["distService"]:
-        print("---------------------------------------------------------------")
         print("Starting Distribution Service...")
         distributionThread = threading.Thread(target=ThreadRetrieve, args=(settings, stop_event))
         distributionThread.start()
         print("Distribution Service Started.")
-        print("---------------------------------------------------------------")
     #Download Thread
     if settings["downloadService"]:
-        print("---------------------------------------------------------------")
         print("Starting Download Service...")
         downloadThread=threading.Thread(target=ThreadDownload, args=(settings, stop_event))
         downloadThread.start()
         print("Download Service Started.")
-        print("---------------------------------------------------------------")
     #MessageMaker Thread
     if settings["messageMakerService"]:
-        print("---------------------------------------------------------------")
         print("Starting MessageMaker Service...")
         messageMakerThread=threading.Thread(target=ThreadMessageMaker, args=(settings, MessageMakerCallback, stop_event))
         messageMakerThread.start()
         print("MessageMaker Service Started.")
-        print("---------------------------------------------------------------")
+    #Token Refresh Thread
+    tokenRefreshThread=threading.Thread(target=ThreadTokenRefresh, args=(settings, stop_event))
+    tokenRefreshThread.start()
 
     while True:
         #Main Thread
-        #Refresh
-        #토큰 만료 시간마다 Refresh 하기 -> 이전 토큰값은 자동으로 폐기됨
-        accessToken = auth.Auth(True, settings)
-        SetAccessToken(accessToken)
-        #만료시간까지 Refresh 중지
-        time.sleep(settings["expirationTime"])
+        time.sleep(1)
 
 except KeyboardInterrupt:
     #Ctrl+C 입력 감지
@@ -88,44 +78,35 @@ except KeyboardInterrupt:
 finally:
     #서비스(스레드) 모두 종료
     if settings["singleSendService"]:
-        print("---------------------------------------------------------------")
         print("Stopping SingleSend Service...")
         stop_event.set()            
         singleSendThread.join(timeout=5) 
         print("SingleSend Service Stopped.")
-        print("---------------------------------------------------------------")
     if settings["fileActService"]:
-        print("---------------------------------------------------------------")
         print("Stopping FileAct Service...")
         stop_event.set()            
         fileActThread.join(timeout=5) 
         print("FileAct Service Stopped.")
-        print("---------------------------------------------------------------")
     if settings["distService"]:
-        print("---------------------------------------------------------------")
         print("Stopping Distribution Service...")
         stop_event.set()            
         distributionThread.join(timeout=5)
         print("Distribution Service Stopped.")
-        print("---------------------------------------------------------------")
     if settings["downloadService"]:
-        print("---------------------------------------------------------------")
         print("Stopping Download Service...")
         stop_event.set()
         downloadThread.join(timeout=5)
         print("Download Service Stopped.")
-        print("---------------------------------------------------------------")
     if settings["messageMakerService"]:
-        print("---------------------------------------------------------------")
         print("Stopping MessageMaker Service...")
         stop_event.set()
         messageMakerThread.join(timeout=5)
         print("MessageMaker Service Stopped.")
-        print("---------------------------------------------------------------")
+    #Token Refresh Thread 종료
+    stop_event.set()
+    tokenRefreshThread.join(timeout=5)
     #사용중이던 토큰 폐기
-    print("---------------------------------------------------------------")
     print("Revoking Access Token...")
     RevokeToken(settings)
-    print("Success")    
-    print("---------------------------------------------------------------")
+    print("Success")
     print("Program has terminated successfully")

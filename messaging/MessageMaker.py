@@ -1,6 +1,7 @@
 import json, base64
 from datetime import datetime
 from lxml import etree
+from Data.globalData import *
 
 #Input MT 메시지 Block4만 추출하기
 #보낼때 block4 값만 보낼수있음

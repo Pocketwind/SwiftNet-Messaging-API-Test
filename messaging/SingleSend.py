@@ -2,6 +2,7 @@ import requests, json, base64, os
 from Auth.Token import *
 from messaging.MessageMaker import *
 from lxml import etree
+from Data.globalData import *
 
 #fin - Send a FIN message to Alliance Cloud.
 #MT 메시지 한번에 하나만 보내기 -> 여러개도 보내기 가능하지만 아직 구현하지 않음
