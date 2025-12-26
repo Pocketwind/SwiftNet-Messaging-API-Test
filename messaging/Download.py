@@ -78,7 +78,7 @@ def Download(accessToken, settings):
     #다운로드 한 파일은 아카이브 목적으로 사용 가능할수도
     #interact Ack 파일 Out
     if(len(interactReports) > 0):
-        reportResponse=requests.get(interactReportUrl, headers=headers, params=mxreportParam, proxies=settings["proxies"], verify=False, timeout=5).json()
+        reportResponse=requests.get(interactReportUrl, headers=headers, params=mxreportParam, proxies=settings["proxies"], verify=True, timeout=5).json()
         if(len(reportResponse) > 0):
             reportPath=f"{settings["downloadPath"]}/{int(time.time())}.mxreport"
             with open(reportPath, "w") as f:
@@ -87,7 +87,7 @@ def Download(accessToken, settings):
             MultiAck(accessToken,interactReports,settings)  
     #FIN Ack 파일 Out
     if(len(reports) > 0):
-        reportResponse=requests.get(reportUrl, headers=headers, params=reportParam, proxies=settings["proxies"], verify=False, timeout=5).json()
+        reportResponse=requests.get(reportUrl, headers=headers, params=reportParam, proxies=settings["proxies"], verify=True, timeout=5).json()
         if(len(reportResponse) > 0):
             reportPath=f"{settings["downloadPath"]}/{int(time.time())}.report"
             with open(reportPath, "w") as f:
@@ -96,7 +96,7 @@ def Download(accessToken, settings):
             MultiAck(accessToken,reports,settings)
     #interact message
     if(len(interactMessages) > 0):
-        messageResponse=requests.get(interactMessageUrl, headers=headers, params=mxmessageParam, proxies=settings["proxies"], verify=False, timeout=5).json()
+        messageResponse=requests.get(interactMessageUrl, headers=headers, params=mxmessageParam, proxies=settings["proxies"], verify=True, timeout=5).json()
         if(len(messageResponse) > 0):
             messagePath=f"{settings["downloadPath"]}/{int(time.time())}.mxmessage"
             with open(messagePath, "w") as f:
@@ -105,7 +105,7 @@ def Download(accessToken, settings):
             MultiAck(accessToken,interactMessages,settings)
     #FIN 파일 out
     if(len(messages) > 0):
-        messageResponse=requests.get(messageUrl, headers=headers, params=messageParam, proxies=settings["proxies"], verify=False, timeout=5).json()
+        messageResponse=requests.get(messageUrl, headers=headers, params=messageParam, proxies=settings["proxies"], verify=True, timeout=5).json()
         if(len(messageResponse) > 0):
             messagePath=f"{settings["downloadPath"]}/{int(time.time())}.message"
             with open(messagePath, "w") as f:
@@ -114,7 +114,7 @@ def Download(accessToken, settings):
             MultiAck(accessToken,messages,settings)
     #FileAct Report (Ack)
     if(len(fileactReports) > 0):
-        reportResponse=requests.get(fileactReportUrl, headers=headers, params=filereportParam, proxies=settings["proxies"], verify=False, timeout=5).json()
+        reportResponse=requests.get(fileactReportUrl, headers=headers, params=filereportParam, proxies=settings["proxies"], verify=True, timeout=5).json()
         if(len(reportResponse) > 0):
             reportPath=f"{settings["downloadPath"]}/{int(time.time())}.filereport"
             with open(reportPath, "w") as f:

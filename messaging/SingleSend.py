@@ -49,7 +49,7 @@ def SingleSend(messageData, settings):
     }
 
     #6. 실제 메시지 전송
-    response=requests.post(url, headers=headers, data=bodyString, proxies=settings["proxies"], verify=False)
+    response=requests.post(url, headers=headers, data=bodyString, proxies=settings["proxies"], verify=True)
     if response.status_code == 201:
         return response.json()
     else:
@@ -129,7 +129,7 @@ def SingleSendInterAct(path, settings):
         "Accept":"application/json"
     }
     
-    response=requests.post(url, headers=headers, data=bodyString, proxies=settings["proxies"], verify=False)
+    response=requests.post(url, headers=headers, data=bodyString, proxies=settings["proxies"], verify=True)
     if response.status_code == 201:
         return response.json()
     else:

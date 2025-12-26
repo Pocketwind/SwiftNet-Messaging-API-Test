@@ -1,4 +1,4 @@
-import requests, time, json, os, tempfile
+import requests, time, json, os, tempfile, pip_system_certs
 from Auth.Token import *
 from Data.globalData import *
 
@@ -14,7 +14,7 @@ def Retrieve(accessToken, settings):
         "limit":settings["maxDistSize"],
         "offset":0
     }
-    response=requests.get(url, headers=headers, params=params, proxies=settings["proxies"], verify=False).json()
+    response=requests.get(url, headers=headers, params=params, proxies=settings["proxies"], verify=True).json()
     return response
 
 #파일로 읽고쓰기때문에 Deadlock 발생 -> 임시파일로 atomic하게 저장하면서 방지

@@ -6,8 +6,8 @@ from messaging.FileAct import *
 from messaging.Watchdog import *
 from messaging.MessageMaker import *
 from messaging.SocketListener import *
-import json, threading, time, os, warnings
 from Data.globalData import *
+import json, threading, time, os, warnings, pip_system_certs
 warnings.filterwarnings("ignore", message="Unverified HTTPS request")
 
 #settings에서 설정 값 읽어오기
@@ -17,8 +17,11 @@ with open(settings["certificatePath"], "r") as f:
     certificate=f.read()
 with open(settings["privatePath"], "r") as f:
     private=f.read()
+with open(settings["CA"], "r") as f:
+    ca=f.read()
 SetCertificate(certificate)
 SetPrivateKey(private)
+SetCA(ca)
 
 #스레드 콜백 정의 부분
 #파이썬에선 이렇게 할 필요는 없지만 C나 Java(?) 에서는 스레드에서 path값 넘겨주기 위해 임시 사용

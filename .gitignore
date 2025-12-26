@@ -6,3 +6,12 @@ jwt_tokens.json
 private.txt
 certificate.txt
 settings.json
+pem
+.vscode
+dist 
+Build
+build
+*.ipynb
+*.pyc
+*.pyo
+*.pyd
