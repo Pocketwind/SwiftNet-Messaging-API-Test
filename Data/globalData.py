@@ -9,7 +9,7 @@ _consumerKey=""
 _creationTime=-1
 _certificate=""
 _private=""
-_CA=""
+_dist={}
 def SetAccessToken(token):
     global _accessToken
     with _lock:
@@ -59,10 +59,10 @@ def SetPrivateKey(key):
 def GetPrivateKey():
     with _lock:
         return _private
-def SetCA(ca):
-    global _CA
+def SetDistribution(distData):
+    global _dist
     with _lock:
-        _CA=ca
-def GetCA():
+        _dist=distData
+def GetDistribution():
     with _lock:
-        return _CA
+        return _dist

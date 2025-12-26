@@ -46,6 +46,7 @@ def ThreadRetrieve(settings, stopEvent):
             check=distributionList.get("distributions")
             if not isinstance(check, dict):
                 print("Distribution - List Updated.")
+                SetDistribution(distributionList)
                 write_atomic(settings["distFile"], distributionList)
             else:
                 print("Distribution - Token Expired. Need to Refresh")

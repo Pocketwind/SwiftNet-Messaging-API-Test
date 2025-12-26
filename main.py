@@ -17,11 +17,8 @@ with open(settings["certificatePath"], "r") as f:
     certificate=f.read()
 with open(settings["privatePath"], "r") as f:
     private=f.read()
-with open(settings["CA"], "r") as f:
-    ca=f.read()
 SetCertificate(certificate)
 SetPrivateKey(private)
-SetCA(ca)
 
 #스레드 콜백 정의 부분
 #파이썬에선 이렇게 할 필요는 없지만 C나 Java(?) 에서는 스레드에서 path값 넘겨주기 위해 임시 사용
@@ -42,6 +39,12 @@ try:
     stop_event = threading.Event()
     #스레드 시작
     #파일 탐지 위한 스레드 정의/시작
+    #Distribution Thread
+    if settings["distService"]:
+        print("Starting Distribution Service...")
+        distributionThread = threading.Thread(target=ThreadRetrieve, args=(settings, stop_event))
+        distributionThread.start()
+        print("Distribution Service Started.")
     #SingleSend Thread
     if settings["singleSendService"]:
         print("Starting SingleSend Service...")
@@ -54,12 +57,6 @@ try:
         fileActThread = threading.Thread(target=ThreadWatchdog, args=(settings["fileActInputPath"], FileInputCallback, stop_event))
         fileActThread.start()
         print("FileAct Service Started. Monitoring directory is: ", settings["fileActInputPath"])
-    #Distribution Thread
-    if settings["distService"]:
-        print("Starting Distribution Service...")
-        distributionThread = threading.Thread(target=ThreadRetrieve, args=(settings, stop_event))
-        distributionThread.start()
-        print("Distribution Service Started.")
     #Download Thread
     if settings["downloadService"]:
         print("Starting Download Service...")

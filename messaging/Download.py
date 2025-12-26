@@ -6,6 +6,7 @@ from Data.globalData import *
 #Distribution List 에서 다운로드가 필요한 메시지 파일 검사 후 다운로드
 def Download(accessToken, settings):
     #1. Distribution List 읽어오기
+    """
     try:
         with open(settings["distFile"], "r") as f:
             dist = json.load(f)
@@ -13,6 +14,8 @@ def Download(accessToken, settings):
     except FileNotFoundError:
         print(f"\nFile {settings["distFile"]} not found.\nNeed to be updated later\n\n")
         return 
+    """
+    dist=GetDistribution()["distributions"]
 
     #2. 메시지 ID 저장할 배열
     messages=[]
@@ -130,7 +133,7 @@ def ThreadDownload(settings, stopEvent):
     while not stopEvent.is_set():
         try:
             accessToken=GetAccessToken()
-            distributionList = Download(accessToken, settings)
+            Download(accessToken, settings)
         except Exception as e:
             print("Download - ThreadDownload error:", type(e).__name__, e)
         for _ in range(int(settings["downloadInterval"])):

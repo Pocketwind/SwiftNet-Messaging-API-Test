@@ -138,9 +138,9 @@ def MessageMaker(downloadPath, outputPath, ackPath):
             #ack maker 만들어야함
             if item["distribution"]["service"]=="fin":
                 #Ack에 원본 전문 포함할지 설정 가능함, 지금은 off
-                payload=base64.b64decode(item["transmission_report"]["message"]["payload"]).decode("utf-8")
-                payload=payload.replace("\r","")
-                item["transmission_report"]["message"]["payload"]=payload
+                #payload=base64.b64decode(item["transmission_report"]["message"]["payload"]).decode("utf-8")
+                #payload=payload.replace("\r","")
+                #item["transmission_report"]["message"]["payload"]=payload
                 sender=item["transmission_report"]["message"]["sender"]
                 receiver=item["transmission_report"]["message"]["receiver"]
                 mtype=item["transmission_report"]["message"]["message_type"].split(".")[1]

@@ -1,4 +1,4 @@
-import requests, json, base64, os
+import requests, json, base64, os, shutil
 from Auth.Token import *
 from messaging.MessageMaker import *
 from lxml import etree
@@ -54,6 +54,7 @@ def SingleSend(messageData, settings):
         return response.json()
     else:
         response=response.json()
+        shutil.move()
         print("---------------------------------------------------------------")
         print(f"Error: {response["code"]}\n{response["text"]}")
         print("---------------------------------------------------------------")
@@ -134,11 +135,59 @@ def SingleSendInterAct(path, settings):
         return response.json()
     else:
         response=response.json()
+        shutil.move(path, settings["inputPath"] + "/failed/" + os.path.basename(path))
         print("---------------------------------------------------------------")
         print(f"Error: {response["code"]}\n{response["text"]}")
         print("---------------------------------------------------------------")
         return response
 
+def SingleSendFIN(path, settings):
+    with open(path, 'r') as f:
+        data=f.read()
+    #1. 토큰, 키 가져오기
+    accessToken=GetAccessToken()
+    messageData=MTParser(data)
+    #2. Block4 내용 Base64로 인코딩
+    messagePayload=messageData['payload']
+    #messagePayload=messagePayload.replace('\r\n', '\n')
+    messagePayloadBase64=base64.b64encode(messagePayload.encode('utf-8')).decode('utf-8')
+
+    #3. Body 제작 후 공백 제거
+    body={
+        "sender_reference":messageData['trn'],
+        "message_type":f"fin.{messageData['finType']}",
+        "sender":messageData['sender'],
+        "receiver":messageData['receiver'],
+        "payload": messagePayloadBase64
+    }
+    bodyString=json.dumps(body, separators=(',', ':'))
+    url=settings["messageUrl"]
+
+    #4. !!!중요한부분!!!
+    #Access를 통한 전송이 아니기 때문에 NR Signature로 무결성, 암호화 검증함
+    #쿼리 보낼 Body, 공개키, 개인키, url을 사용해 실제 사용자가 맞는지 확인
+    #아마 가장 많이 오류 날 부분으로 예상됨
+    signature=create_nr_signature(settings["subject"], GetPrivateKey(), GetCertificate(), body, url)
+
+    #5. 만든 Signature 헤더에 포함시켜서 제작
+    headers={
+        "Authorization":f"Bearer {accessToken}",
+        "X-SWIFT-Signature":signature,
+        "Content-Type":"application/json",
+        "Accept":"application/json"
+    }
+
+    #6. 실제 메시지 전송
+    response=requests.post(url, headers=headers, data=bodyString, proxies=settings["proxies"], verify=True)
+    if response.status_code == 201:
+        return response.json()
+    else:
+        response=response.json()
+        shutil.move(path, settings["inputPath"] + "/failed/" + os.path.basename(path))
+        print("---------------------------------------------------------------")
+        print(f"Error: {response["code"]}\n{response["text"]}")
+        print("---------------------------------------------------------------")
+        return response
 #메시지 파일 감지 시 MT/MX 구분하는 파트
 #'{' 로 시작하면 MT
 #'<' 로 시작하면 MX인 형태로 구분
@@ -150,10 +199,11 @@ def MessageCollector(path, settings):
             data=f.read()
         f.close()
         if data[0] == "{":
-            messageData=MTParser(data)
-            SingleSend(messageData, settings)
+            #messageData=MTParser(data)
+            #SingleSend(messageData, settings)
+            SingleSendFIN(path, settings)
         elif data[0] == "<":
-            messageData=SingleSendInterAct(path, settings)
+            SingleSendInterAct(path, settings)
         os.remove(path)
         print(f'Message {path} is processed and removed.')
     print("---------------------------------------------------------------")
