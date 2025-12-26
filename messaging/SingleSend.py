@@ -11,10 +11,12 @@ from Data.globalData import *
 def SingleSend(messageData, settings):
     #1. 토큰, 키 가져오기
     accessToken=GetAccessToken()
+    """
     with open(settings["privatePath"], "r") as f:
         private=f.read()
     with open(settings["certificatePath"], "r") as f:
         certificate=f.read()
+    """
     
     #2. Block4 내용 Base64로 인코딩
     messagePayload=messageData['payload']
@@ -36,7 +38,7 @@ def SingleSend(messageData, settings):
     #Access를 통한 전송이 아니기 때문에 NR Signature로 무결성, 암호화 검증함
     #쿼리 보낼 Body, 공개키, 개인키, url을 사용해 실제 사용자가 맞는지 확인
     #아마 가장 많이 오류 날 부분으로 예상됨
-    signature=create_nr_signature(settings["subject"], private, certificate, body, url)
+    signature=create_nr_signature(settings["subject"], GetPrivateKey(), GetCertificate(), body, url)
 
     #5. 만든 Signature 헤더에 포함시켜서 제작
     headers={
@@ -102,10 +104,12 @@ def SingleSendInterAct(path, settings):
 
     #6. FIN과 동일하게 NR Signature 만든 후 전송하는 API 콜 전송
     accessToken=GetAccessToken()
+    """
     with open(settings["privatePath"], "r") as f:
         private=f.read()
     with open(settings["certificatePath"], "r") as f:
         certificate=f.read()
+    """
     payloadBase64=base64.b64encode(payload.encode('utf-8')).decode('utf-8')
     body={
         "sender_reference":senderRef,
@@ -117,7 +121,7 @@ def SingleSendInterAct(path, settings):
         "payload":payloadBase64
     }
     bodyString=json.dumps(body, separators=(',', ':'))
-    signature=create_nr_signature(settings["subject"], private, certificate, body, url)
+    signature=create_nr_signature(settings["subject"], GetPrivateKey(), GetCertificate(), body, url)
     headers={
         "Authorization":f"Bearer {accessToken}",
         "X-SWIFT-Signature":signature,

@@ -5,6 +5,7 @@ from messaging.SingleSend import *
 from messaging.FileAct import *
 from messaging.Watchdog import *
 from messaging.MessageMaker import *
+from messaging.SocketListener import *
 import json, threading, time, os, warnings
 from Data.globalData import *
 warnings.filterwarnings("ignore", message="Unverified HTTPS request")
@@ -12,6 +13,12 @@ warnings.filterwarnings("ignore", message="Unverified HTTPS request")
 #settings에서 설정 값 읽어오기
 with open("settings.json","r") as f:
     settings=json.load(f)
+with open(settings["certificatePath"], "r") as f:
+    certificate=f.read()
+with open(settings["privatePath"], "r") as f:
+    private=f.read()
+SetCertificate(certificate)
+SetPrivateKey(private)
 
 #스레드 콜백 정의 부분
 #파이썬에선 이렇게 할 필요는 없지만 C나 Java(?) 에서는 스레드에서 path값 넘겨주기 위해 임시 사용
@@ -62,6 +69,12 @@ try:
         messageMakerThread=threading.Thread(target=ThreadMessageMaker, args=(settings, MessageMakerCallback, stop_event))
         messageMakerThread.start()
         print("MessageMaker Service Started.")
+    # Socket Listener Thread
+    if settings.get("socketListenerService", False):
+        print("Starting Socket Listener Service...")
+        socketListenerThread = threading.Thread(target=ThreadSocketListener, args=(settings, stop_event))
+        socketListenerThread.start()
+        print("Socket Listener Service Started.")
     #Token Refresh Thread
     tokenRefreshThread=threading.Thread(target=ThreadTokenRefresh, args=(settings, stop_event))
     tokenRefreshThread.start()
@@ -102,6 +115,11 @@ finally:
         stop_event.set()
         messageMakerThread.join(timeout=5)
         print("MessageMaker Service Stopped.")
+    if settings["socketListenerService"]:
+        print("Stopping Socket Listener Service...")
+        stop_event.set()
+        socketListenerThread.join(timeout=5)
+        print("Socket Listener Service Stopped.")
     #Token Refresh Thread 종료
     stop_event.set()
     tokenRefreshThread.join(timeout=5)

@@ -7,6 +7,8 @@ _refreshToken=""
 _consumerCred=""
 _consumerKey=""
 _creationTime=-1
+_certificate=""
+_private=""
 def SetAccessToken(token):
     global _accessToken
     with _lock:
@@ -42,3 +44,17 @@ def SetCreationTime(t):
 def GetCreationTime():
     with _lock:
         return _creationTime
+def SetCertificate(cert):
+    global _certificate
+    with _lock:
+        _certificate=cert
+def GetCertificate():
+    with _lock:
+        return _certificate
+def SetPrivateKey(key):
+    global _private
+    with _lock:
+        _private=key
+def GetPrivateKey():
+    with _lock:
+        return _private

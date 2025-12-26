@@ -93,10 +93,12 @@ def GenerateNewTokensWithJWT(settings):
     return accessToken, refreshToken
 
 def CreateJWT(settings):
+    """
     with open(settings["certificatePath"], "r") as f:
         cert=f.read()
     with open(settings["privatePath"], "r") as f:
         private=f.read()
+    """
     currentTime=int(time.time())
     payload={
         "iss": settings["consumerKey"],
@@ -111,14 +113,14 @@ def CreateJWT(settings):
     header={
         "typ": "JWT",
         "alg": "RS256",
-        "x5c": [cert
+        "x5c": [GetCertificate()
                 .replace("-----BEGIN CERTIFICATE-----", "")
                 .replace("-----END CERTIFICATE-----", "")
                 .replace("\n", "")
                 .replace("\r", "")
                 .replace(" ", "")]
     }
-    jwtToken=jwt.encode(payload, private, algorithm="RS256", headers=header)
+    jwtToken=jwt.encode(payload, GetPrivateKey(), algorithm="RS256", headers=header)
     return jwtToken
 
 #Messaging을 위한 Access Token 발급을 위한 부분
