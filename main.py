@@ -22,6 +22,14 @@ with open(settings["privatePath"], "r") as f:
 SetCertificate(certificate)
 SetPrivateKey(private)
 
+#AFT폴더 없으면 생성
+os.makedirs(settings["inputPath"], exist_ok=True)
+os.makedirs(settings["outputPath"], exist_ok=True)
+os.makedirs(settings["fileActInputPath"], exist_ok=True)
+os.makedirs(settings["fileActOutputPath"], exist_ok=True)
+os.makedirs(settings["ackPath"], exist_ok=True)
+os.makedirs(settings["downloadPath"], exist_ok=True)
+
 #스레드 콜백 정의 부분
 #파이썬에선 이렇게 할 필요는 없지만 C나 Java(?) 에서는 스레드에서 path값 넘겨주기 위해 임시 사용
 #메시지 파일 In/Out 탐지 
