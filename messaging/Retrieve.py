@@ -1,4 +1,4 @@
-import requests, time, json, os, tempfile, pip_system_certs
+import time, json, os, tempfile, requests
 from Auth.Token import *
 from Data.globalData import *
 

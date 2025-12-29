@@ -1,3 +1,5 @@
+import pip_system_certs.wrapt_requests
+pip_system_certs.wrapt_requests.inject_truststore()
 import Auth.Authorization as auth
 from messaging.Retrieve import *
 from messaging.Download import *
