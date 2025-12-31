@@ -34,7 +34,9 @@ def SingleSendFileAct(path, settings):
 
     #4. Initiate시 필요한 값들 정의
     actionType="upload" #or download
-    encryptionKey="13c2f4184wjmuygjyghfs5fd5xc5xv6s" #AES256 암호화 시 사용할 32글자(고정) 키
+    encryptionKey=settings["encryptionKey"] #AES256 암호화 시 사용할 32글자(고정) 키
+    if len(encryptionKey) != 32:
+        raise ValueError("<encryptionKey> must be 32 characters (AES256)")
     keyValue=base64.b64encode(encryptionKey.encode('utf-8')).decode('utf-8')
     raw_md5 = hashlib.md5(encryptionKey.encode('utf-8')).digest()
     keyDigest = base64.b64encode(raw_md5).decode('utf-8')
