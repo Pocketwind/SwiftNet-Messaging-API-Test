@@ -32,6 +32,7 @@ def JWTAuth(settings):
         print(f"Access Token: {accessToken}")
         SetAccessToken(accessToken)
         SetRefreshToken(refreshToken)
+        SetCreationTime(currentTime)
 
     return GetAccessToken()
 
