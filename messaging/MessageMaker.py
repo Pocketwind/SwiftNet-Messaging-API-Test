@@ -88,9 +88,9 @@ def SocketJSONReceiver(data):
     digestDecoded=base64.b64decode(digest)
     textDigest=hashlib.md5(textDecoded).digest()
     if textDigest == digestDecoded:
-        print("Validated")
+        print("Message is Validated")
     else:
-        print("Data Corruption")
+        print("Message Data is Corrupted")
         return
     textJson=json.loads(textDecoded)
     textJson["payload"]=base64.b64decode(textJson["payload"]).decode("utf-8")
@@ -100,7 +100,8 @@ def SocketJSONReceiver(data):
         SingleSend.SingleSendInterAct(textJson, Data.GetSettings())
     else:
         print("Unknown Message Format")
-
+        return
+    print("Message from Socket is processed")
 """
 #Output MT 메시지
 #download한 데이터에서 실제 MT 전문 만들어내기
