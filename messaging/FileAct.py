@@ -1,8 +1,7 @@
-import requests, json, base64, os, hashlib
-from Auth.Token import *
-from messaging.MessageMaker import *
+import requests, json, base64, os, hashlib, time
+import auth.Token as Token
+import data.globalData as Data
 from lxml import etree
-from Data.globalData import *
 
 #사내 ETPXKRSS는 FileAct 미가입으로 Upload, Ack까지만 가능 -> 파일 Send는 가능하지만 Nack 떨어짐
 #FileAct는 3개 파트로 분리되어있음
@@ -12,7 +11,7 @@ from Data.globalData import *
 #Complete: 파일 업로드 종료 알림 -> 실제 FileAct 메시지 생성
 def SingleSendFileAct(path, settings):
     #1. 토큰, 인증서 값 읽어오기
-    accessToken=GetAccessToken()
+    accessToken=Data.GetAccessToken()
     """
     with open(settings["privatePath"], "r") as f:
         private=f.read()
@@ -85,7 +84,7 @@ def SingleSendFileAct(path, settings):
     #Access를 통한 전송이 아니기 때문에 NR Signature로 무결성, 암호화 검증함
     #쿼리 보낼 Body, 공개키, 개인키, url을 사용해 실제 사용자가 맞는지 확인
     #아마 가장 많이 오류 날 부분으로 예상됨
-    signature=create_nr_signature(settings["subject"], GetPrivateKey(), GetCertificate(), body, url)
+    signature=Token.create_nr_signature(settings["subject"], Data.GetPrivateKey(), Data.GetCertificate(), body, url)
     headers={
         "Authorization":f"Bearer {accessToken}",
         "X-SWIFT-Signature":signature,

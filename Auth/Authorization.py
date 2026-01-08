@@ -1,7 +1,6 @@
 import base64, time
-from Auth.Token import *
-from Data.globalData import *
-
+import auth.Token as Token
+import data.globalData as Data
 #토큰 관리 위한 파트
 #Messaging에서 JWT 방식 사용
 def Auth(isJWTRequied, settings=None):
@@ -17,24 +16,24 @@ def Auth(isJWTRequied, settings=None):
 #or 할거 없으면 넘어감
 def JWTAuth(settings):
     currentTime=int(time.time())
-    creationTime=GetCreationTime()
+    creationTime=Data.GetCreationTime()
 
     if creationTime==-1:    #Initialize
         print("Initializing New Access Token...")
-        accessToken, refreshToken = GenerateNewTokensWithJWT(settings)
+        accessToken, refreshToken = Token.GenerateNewTokensWithJWT(settings)
         print(f"Access Token: {accessToken}")
-        SetAccessToken(accessToken)
-        SetRefreshToken(refreshToken)
-        SetCreationTime(currentTime)
+        Data.SetAccessToken(accessToken)
+        Data.SetRefreshToken(refreshToken)
+        Data.SetCreationTime(currentTime)
     elif currentTime-creationTime > settings["expirationTime"]:
         print("Token Expired. Refreshing New Token.")
-        accessToken, refreshToken = RefreshToken(settings)
+        accessToken, refreshToken = Token.RefreshToken(settings)
         print(f"Access Token: {accessToken}")
-        SetAccessToken(accessToken)
-        SetRefreshToken(refreshToken)
-        SetCreationTime(currentTime)
+        Data.SetAccessToken(accessToken)
+        Data.SetRefreshToken(refreshToken)
+        Data.SetCreationTime(currentTime)
 
-    return GetAccessToken()
+    return Data.GetAccessToken()
 
 #Messaging에서는 필요없는 파트
 def BasicAuth(settings):
@@ -42,5 +41,5 @@ def BasicAuth(settings):
     secret=settings["consumerSecret"]
     accessToken=key+":"+secret
     accessToken=base64.b64encode(accessToken.encode('utf-8')).decode('utf-8')
-    SetAccessToken(accessToken)
+    Data.SetAccessToken(accessToken)
     return accessToken

@@ -1,6 +1,6 @@
 import requests, json, time
-from messaging.Ack import *
-from Data.globalData import *
+import data.globalData as Data
+import messaging.Ack as Ack
 
 #Download one or several FIN, Interact, FileAct messages ready to be distributed.
 #Distribution List 에서 다운로드가 필요한 메시지 파일 검사 후 다운로드
@@ -15,7 +15,7 @@ def Download(accessToken, settings):
         print(f"\nFile {settings["distFile"]} not found.\nNeed to be updated later\n\n")
         return 
     """
-    dist=GetDistribution()["distributions"]
+    dist=Data.GetDistribution()["distributions"]
 
     #2. 메시지 ID 저장할 배열
     messages=[]
@@ -87,7 +87,7 @@ def Download(accessToken, settings):
             with open(reportPath, "w") as f:
                 json.dump(reportResponse, f, indent=4)
             print("Download - MX Reports Downloaded")
-            MultiAck(accessToken,interactReports,settings)  
+            Ack.MultiAck(accessToken,interactReports,settings)  
     #FIN Ack 파일 Out
     if(len(reports) > 0):
         reportResponse=requests.get(reportUrl, headers=headers, params=reportParam, proxies=settings["proxies"], verify=True, timeout=5).json()
@@ -96,7 +96,7 @@ def Download(accessToken, settings):
             with open(reportPath, "w") as f:
                 json.dump(reportResponse, f, indent=4)
             print("Download - Reports Downloaded")
-            MultiAck(accessToken,reports,settings)
+            Ack.MultiAck(accessToken,reports,settings)
     #interact message
     if(len(interactMessages) > 0):
         messageResponse=requests.get(interactMessageUrl, headers=headers, params=mxmessageParam, proxies=settings["proxies"], verify=True, timeout=5).json()
@@ -105,7 +105,7 @@ def Download(accessToken, settings):
             with open(messagePath, "w") as f:
                 json.dump(messageResponse, f, indent=4)
             print("Download - MX Messages Downloaded")
-            MultiAck(accessToken,interactMessages,settings)
+            Ack.MultiAck(accessToken,interactMessages,settings)
     #FIN 파일 out
     if(len(messages) > 0):
         messageResponse=requests.get(messageUrl, headers=headers, params=messageParam, proxies=settings["proxies"], verify=True, timeout=5).json()
@@ -114,7 +114,7 @@ def Download(accessToken, settings):
             with open(messagePath, "w") as f:
                 json.dump(messageResponse, f, indent=4)
             print("Download - Messages Downloaded")
-            MultiAck(accessToken,messages,settings)
+            Ack.MultiAck(accessToken,messages,settings)
     #FileAct Report (Ack)
     if(len(fileactReports) > 0):
         reportResponse=requests.get(fileactReportUrl, headers=headers, params=filereportParam, proxies=settings["proxies"], verify=True, timeout=5).json()
@@ -123,7 +123,7 @@ def Download(accessToken, settings):
             with open(reportPath, "w") as f:
                 json.dump(reportResponse, f, indent=4)
             print("Download - File Reports Downloaded")
-            MultiAck(accessToken,fileactReports,settings)
+            Ack.MultiAck(accessToken,fileactReports,settings)
 
     #아무것도 없으면 그냥 넘어가기
     #print("Download - No Messages")
@@ -133,7 +133,7 @@ def ThreadDownload(settings, stopEvent):
     time.sleep(5) #초기화 대기
     while not stopEvent.is_set():
         try:
-            accessToken=GetAccessToken()
+            accessToken=Data.GetAccessToken()
             Download(accessToken, settings)
         except Exception as e:
             print("Download - ThreadDownload error:", type(e).__name__, e)

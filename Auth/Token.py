@@ -2,8 +2,8 @@ import json, base64, requests, time, jwt, random, re, hashlib
 from urllib.parse import urlparse
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
-from Data.globalData import *
-import Auth.Authorization as auth
+import auth.Authorization as Auth
+import data.globalData as Data
 
 #토큰 폐기
 #API 예제 Postman에만 있음
@@ -21,7 +21,7 @@ def RevokeToken(settings):
         "Content-Type": "application/x-www-form-urlencoded"
     }
     body={
-        "token":GetAccessToken()
+        "token":Data.GetAccessToken()
     }
     response=requests.post(url,headers=header,data=body,proxies=settings["proxies"],verify=False)
     return response
@@ -41,7 +41,7 @@ def RefreshToken(settings):
     }
     body={
         "grant_type":"refresh_token",
-        "refresh_token":f"{GetRefreshToken()}"
+        "refresh_token":f"{Data.GetRefreshToken()}"
     }
     
     response=requests.post(settings["url"], 
@@ -113,14 +113,14 @@ def CreateJWT(settings):
     header={
         "typ": "JWT",
         "alg": "RS256",
-        "x5c": [GetCertificate()
+        "x5c": [Data.GetCertificate()
                 .replace("-----BEGIN CERTIFICATE-----", "")
                 .replace("-----END CERTIFICATE-----", "")
                 .replace("\n", "")
                 .replace("\r", "")
                 .replace(" ", "")]
     }
-    jwtToken=jwt.encode(payload, GetPrivateKey(), algorithm="RS256", headers=header)
+    jwtToken=jwt.encode(payload, Data.GetPrivateKey(), algorithm="RS256", headers=header)
     return jwtToken
 
 #Messaging을 위한 Access Token 발급을 위한 부분
@@ -265,7 +265,7 @@ def ThreadTokenRefresh(settings, stopEvent):
         if stopEvent.wait(settings["expirationTime"]):
             break
         try:
-            accessToken = auth.Auth(True, settings)
-            SetAccessToken(accessToken)
+            accessToken = Auth.Auth(True, settings)
+            Data.SetAccessToken(accessToken)
         except Exception as e:
             print("Token Refresh - ThreadTokenRefresh error:", type(e).__name__, e)

@@ -1,6 +1,6 @@
 import time, json, os, tempfile, requests
-from Auth.Token import *
-from Data.globalData import *
+import auth.Token as Token
+import data.globalData as Data
 
 #distributions - Retrieve the list of available distributions from Alliance Cloud.
 #Ready to be distributed 인 메시지 리스트 불러오기
@@ -41,12 +41,12 @@ def write_atomic(path, data):
 def ThreadRetrieve(settings, stopEvent):
     while not stopEvent.is_set():
         try:
-            accessToken=GetAccessToken()
+            accessToken=Data.GetAccessToken()
             distributionList = Retrieve(accessToken, settings)
             check=distributionList.get("distributions")
             if not isinstance(check, dict):
                 print("Distribution - List Updated.")
-                SetDistribution(distributionList)
+                Data.SetDistribution(distributionList)
                 write_atomic(settings["distFile"], distributionList)
             else:
                 print("Distribution - Token Expired. Need to Refresh")

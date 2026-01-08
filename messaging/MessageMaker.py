@@ -1,8 +1,7 @@
 import json, base64, hashlib
-from datetime import datetime
 from lxml import etree
-from Data.globalData import *
-import messaging.SingleSend as ss
+import data.globalData as Data
+import messaging.SingleSend as SingleSend
 
 #Input MT 메시지 Block4만 추출하기
 #보낼때 block4 값만 보낼수있음
@@ -36,13 +35,73 @@ def MTParser(message):
             break
     data={
         "sender": sender,
-        "finType": finType,
+        "mtype": f"fin.{finType}",
         "receiver": receiver,
         "payload": payload,
         "trn": trn
     }
     return data
 
+def MXParser(message):
+    root=etree.fromstring(message.encode("utf-8"))
+
+    namespaces = {
+    'Saa': 'urn:swift:saa:xsd:saa.2.0'
+    }
+    senderRef=root.xpath('//Saa:Header/Saa:Message/Saa:SenderReference/text()', namespaces=namespaces)[0]
+    serviceCode=root.xpath('//Saa:Header/Saa:Message/Saa:NetworkInfo/Saa:Service/text()', namespaces=namespaces)[0]
+    mtype=root.xpath('//Saa:Header/Saa:Message/Saa:MessageIdentifier/text()', namespaces=namespaces)[0]
+    requestor=root.xpath('//Saa:Header/Saa:Message/Saa:Sender/Saa:DN/text()', namespaces=namespaces)[0]
+    responder=root.xpath('//Saa:Header/Saa:Message/Saa:Receiver/Saa:DN/text()', namespaces=namespaces)[0]
+
+    headerns={
+        "head":"urn:iso:std:iso:20022:tech:xsd:head.001.001.02"
+    }
+    header=root.xpath(f"//head:AppHdr",namespaces=headerns)[0]
+    headerStr=etree.tostring(header, encoding="unicode")
+
+    docns={
+        mtype[:4]:f"urn:iso:std:iso:20022:tech:xsd:{mtype}"
+    }
+    doc=root.xpath(f"//{mtype[:4]}:Document",namespaces=docns)[0]
+    docStr=etree.tostring(doc, encoding="unicode")
+
+    payload=f"{headerStr}{docStr}"
+
+    result={
+        "senderRef":senderRef,
+        "serviceCode":serviceCode,
+        "mtype":mtype,
+        "mformat":"MX",
+        "requestor":requestor,
+        "responder":responder,
+        "payload":payload
+    }
+
+    return result
+           
+def SocketJSONReceiver(data):
+    data = data.split(".")
+    text=data[0]
+    digest=data[1]
+    textDecoded=base64.b64decode(text)
+    digestDecoded=base64.b64decode(digest)
+    textDigest=hashlib.md5(textDecoded).digest()
+    if textDigest == digestDecoded:
+        print("Validated")
+    else:
+        print("Data Corruption")
+        return
+    textJson=json.loads(textDecoded)
+    textJson["payload"]=base64.b64decode(textJson["payload"]).decode("utf-8")
+    if textJson["mformat"] == "MT":
+        SingleSend.SingleSendFIN(textJson, Data.GetSettings())
+    elif textJson["mformat"] in ["MX", "AnyXML"]:
+        SingleSend.SingleSendInterAct(textJson, Data.GetSettings())
+    else:
+        print("Unknown Message Format")
+
+"""
 #Output MT 메시지
 #download한 데이터에서 실제 MT 전문 만들어내기
 #MT 포맷 맞게 했는지 확인 필요함
@@ -114,7 +173,7 @@ def MTAckMaker(sender,receiver,status,reason,payload, mdate,mtype,reference):
 
 #download한 데이터에서 실제 전문 추출
 #Payload에 값이 들어있지만 Base64 인코딩 되어있으므로 디코딩 후 위의 파서로 전문 제작
-def MessageMaker(downloadPath, outputPath, ackPath):
+def MessageMaker(settings):
     with open(downloadPath, "r") as f:
         file=json.load(f)
     for item in file:
@@ -162,19 +221,4 @@ def MessageMaker(downloadPath, outputPath, ackPath):
                 messageId=item["distribution"]["id"]
                 with open(f"{ackPath}/{messageId}.mxack", "w") as f:
                     f.write(payload)
-                    
-def SocketJSONtoMT(data):
-    data = data.split(".")
-    text=data[0]
-    digest=data[1]
-    textDecoded=base64.b64decode(text)
-    digestDecoded=base64.b64decode(digest)
-    textDigest=hashlib.md5(textDecoded).digest()
-    if textDigest == digestDecoded:
-        print("Validated")
-    else:
-        print("Data Corruption")
-        return
-    textJson=json.loads(textDecoded)
-    textJson["payload"]=base64.b64decode(textJson["payload"]).decode("utf-8")
-    ss.SingleSendText(messageData=textJson, settings=GetSettings())
+"""
