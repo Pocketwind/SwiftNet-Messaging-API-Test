@@ -1,7 +1,8 @@
-import json, base64
+import json, base64, hashlib
 from datetime import datetime
 from lxml import etree
 from Data.globalData import *
+import messaging.SingleSend as ss
 
 #Input MT 메시지 Block4만 추출하기
 #보낼때 block4 값만 보낼수있음
@@ -162,3 +163,18 @@ def MessageMaker(downloadPath, outputPath, ackPath):
                 with open(f"{ackPath}/{messageId}.mxack", "w") as f:
                     f.write(payload)
                     
+def SocketJSONtoMT(data):
+    data = data.split(".")
+    text=data[0]
+    digest=data[1]
+    textDecoded=base64.b64decode(text)
+    digestDecoded=base64.b64decode(digest)
+    textDigest=hashlib.md5(textDecoded).digest()
+    if textDigest == digestDecoded:
+        print("Validated")
+    else:
+        print("Data Corruption")
+        return
+    textJson=json.loads(textDecoded)
+    textJson["payload"]=base64.b64decode(textJson["payload"]).decode("utf-8")
+    ss.SingleSendText(messageData=textJson, settings=GetSettings())

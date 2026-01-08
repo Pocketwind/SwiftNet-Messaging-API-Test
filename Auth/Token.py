@@ -143,6 +143,8 @@ def GetBearerTokenWithJWT(settings):
     }
     response=requests.post(settings["url"], headers=header, data=body, proxies=settings["proxies"], verify=False)
     responseJson=response.json()
+    if responseJson.get("access_token") == None:
+        raise Exception(f"Failed to get Access Token\n{responseJson}")
     return responseJson
 
 #JWT 생성 위한 임의 문자열

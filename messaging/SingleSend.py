@@ -8,7 +8,7 @@ from Data.globalData import *
 #MT 메시지 한번에 하나만 보내기 -> 여러개도 보내기 가능하지만 아직 구현하지 않음
 #1초에 1~2개 전송 가능한 속도
 #Block4 내용만 전송 가능
-def SingleSend(messageData, settings):
+def SingleSendText(messageData, settings):
     #1. 토큰, 키 가져오기
     accessToken=GetAccessToken()
     """
@@ -26,7 +26,7 @@ def SingleSend(messageData, settings):
     #3. Body 제작 후 공백 제거
     body={
         "sender_reference":messageData['trn'],
-        "message_type":f"fin.{messageData['finType']}",
+        "message_type":f"{messageData['finType']}",
         "sender":messageData['sender'],
         "receiver":messageData['receiver'],
         "payload": messagePayloadBase64
@@ -47,18 +47,20 @@ def SingleSend(messageData, settings):
         "Content-Type":"application/json",
         "Accept":"application/json"
     }
-
+    #print(bodyString)
+    
     #6. 실제 메시지 전송
     response=requests.post(url, headers=headers, data=bodyString, proxies=settings["proxies"], verify=True)
     if response.status_code == 201:
         return response.json()
     else:
         response=response.json()
-        shutil.move()
+        #shutil.move()
         print("---------------------------------------------------------------")
         print(f"Error: {response["code"]}\n{response["text"]}")
         print("---------------------------------------------------------------")
         return response
+    
 
 #interact - Send an InterAct message to Alliance Cloud.
 #fin 전송과 같은 방식이지만 XML 파싱 필요해서 상대적으로 느림

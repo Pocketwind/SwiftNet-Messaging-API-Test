@@ -9,7 +9,7 @@ from messaging.Watchdog import *
 from messaging.MessageMaker import *
 from messaging.SocketListener import *
 from Data.globalData import *
-import json, threading, time, os, warnings, pip_system_certs
+import json, threading, time, os, warnings, pip_system_certs, sys
 warnings.filterwarnings("ignore", message="Unverified HTTPS request")
 
 #settings에서 설정 값 읽어오기
@@ -21,6 +21,7 @@ with open(settings["privatePath"], "r") as f:
     private=f.read()
 SetCertificate(certificate)
 SetPrivateKey(private)
+SetSettings(settings)
 
 #AFT폴더 없으면 생성
 os.makedirs(settings["inputPath"], exist_ok=True)
@@ -82,8 +83,9 @@ try:
     # Socket Listener Thread
     if settings.get("socketListenerService", False):
         print("Starting Socket Listener Service...")
-        socketListenerThread = threading.Thread(target=ThreadSocketListener, args=(settings, stop_event))
-        socketListenerThread.start()
+        asyncSocketListener=AsyncSocketListener(settings)
+        asyncSocketListenerThread=threading.Thread(target=asyncSocketListener.main)
+        asyncSocketListenerThread.start()
         print("Socket Listener Service Started.")
     #Token Refresh Thread
     tokenRefreshThread=threading.Thread(target=ThreadTokenRefresh, args=(settings, stop_event))
@@ -96,6 +98,11 @@ try:
 except KeyboardInterrupt:
     #Ctrl+C 입력 감지
     print("---------------------------------------------------------------")
+    print("Stopping All Services...")
+    print("---------------------------------------------------------------")
+except Exception as e:
+    print("---------------------------------------------------------------")
+    print("Error:", type(e).__name__, e)
     print("Stopping All Services...")
     print("---------------------------------------------------------------")
 finally:
@@ -127,8 +134,7 @@ finally:
         print("MessageMaker Service Stopped.")
     if settings["socketListenerService"]:
         print("Stopping Socket Listener Service...")
-        stop_event.set()
-        socketListenerThread.join(timeout=5)
+        asyncSocketListener.stop()
         print("Socket Listener Service Stopped.")
     #Token Refresh Thread 종료
     stop_event.set()

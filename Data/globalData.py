@@ -10,6 +10,14 @@ _creationTime=-1
 _certificate=""
 _private=""
 _dist={}
+_settings={}
+def SetSettings(settings):
+    global _settings
+    with _lock:
+        _settings=settings
+def GetSettings():
+    with _lock:
+        return _settings
 def SetAccessToken(token):
     global _accessToken
     with _lock:

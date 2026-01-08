@@ -130,6 +130,7 @@ def Download(accessToken, settings):
 
 #다운로드 관리하는 스레드
 def ThreadDownload(settings, stopEvent):
+    time.sleep(5) #초기화 대기
     while not stopEvent.is_set():
         try:
             accessToken=GetAccessToken()
