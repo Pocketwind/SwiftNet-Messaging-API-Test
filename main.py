@@ -33,10 +33,9 @@ os.makedirs(settings["downloadPath"], exist_ok=True)
 def MessageInputCallback(path):
     SingleSend.MessageCollector(path, settings)
 def MessageMakerCallback(downloadPath):
-    MessageMaker.MessageMaker(downloadPath, settings)
+    MessageMaker.MessageMaker(downloadPath, settings, asyncSocketListener.Send)
 def FileInputCallback(path):
     FileAct.FileCollector(path, settings)
-
 try:
     accessToken = Auth.Auth(True, settings)
     Data.SetAccessToken(accessToken)
@@ -67,13 +66,11 @@ try:
         downloadThread.start()
         print("Download Service Started.")
     #MessageMaker Thread
-    """
     if settings["messageMakerService"]:
         print("Starting MessageMaker Service...")
-        messageMakerThread=threading.Thread(target=Watchdog.ThreadWatchdog, args=(settings, MessageMakerCallback, stop_event))
+        messageMakerThread=threading.Thread(target=Watchdog.ThreadWatchdog, args=(settings["downloadPath"], MessageMakerCallback, stop_event))
         messageMakerThread.start()
         print("MessageMaker Service Started.")
-    """
     # Socket Listener Thread
     if settings.get("socketListenerService", False):
         print("Starting Socket Listener Service...")

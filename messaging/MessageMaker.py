@@ -2,6 +2,7 @@ import json, base64, hashlib, hmac
 from lxml import etree
 import data.globalData as Data
 import messaging.SingleSend as SingleSend
+import data.hmacValidation as hv
 
 #Input MT 메시지 Block4만 추출하기
 #보낼때 block4 값만 보낼수있음
@@ -88,7 +89,8 @@ def SocketJSONReceiver(data):
 
     
     hmacSecret=Data.GetSettings()["hmacSecret"].encode("utf-8")
-    expectedDigest=hmac.new(hmacSecret,textDecoded.encode("utf-8"),hashlib.sha256).hexdigest()
+    #expectedDigest=hmac.new(hmacSecret,textDecoded.encode("utf-8"),hashlib.sha256).hexdigest()
+    expectedDigest=hv.Encode(text, hmacSecret)[1]
 
     #print(f"{digest}\n{expectedDigest}")
     if digest == expectedDigest:
@@ -108,7 +110,7 @@ def SocketJSONReceiver(data):
         return
     print("Message from Socket is processed")
     
-"""
+
 #Output MT 메시지
 #download한 데이터에서 실제 MT 전문 만들어내기
 #MT 포맷 맞게 했는지 확인 필요함
@@ -179,10 +181,15 @@ def MTAckMaker(sender,receiver,status,reason,payload, mdate,mtype,reference):
     return result
 
 #download한 데이터에서 실제 전문 추출
-#Payload에 값이 들어있지만 Base64 인코딩 되어있으므로 디코딩 후 위의 파서로 전문 제작
-def MessageMaker(settings):
-    with open(downloadPath, "r") as f:
+#Payload에 값이 들어있지만 Base64 인코딩 되어있으므로 디코딩 후 파서로 전문 제작
+def MessageMaker(path, settings, Send):
+    with open(path, "r") as f:
         file=json.load(f)
+    text=json.dumps(file,separators=(',', ':'))
+    m=hv.Encode(text, settings["hmacSecret"])
+    Send("10.10.20.181", 12345, m)
+    #전문 Maker
+    """
     for item in file:
         if isinstance(item.get("message"), dict):
             if item["distribution"]["service"]=="fin":
@@ -228,4 +235,4 @@ def MessageMaker(settings):
                 messageId=item["distribution"]["id"]
                 with open(f"{ackPath}/{messageId}.mxack", "w") as f:
                     f.write(payload)
-"""
+    """
