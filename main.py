@@ -10,7 +10,7 @@ import messaging.Watchdog as Watchdog
 import messaging.MessageMaker as MessageMaker
 import messaging.SocketListener as Socket
 import data.globalData as Data
-import json, threading, time, os, warnings, pip_system_certs
+import json, threading, time, os, warnings, pip_system_certs, asyncio
 warnings.filterwarnings("ignore", message="Unverified HTTPS request")
 
 with open("settings.json","r") as f:
@@ -87,6 +87,7 @@ try:
     
     while True:
         time.sleep(1)
+        #asyncSocketListener.Send("10.10.3.100",12345,"asdasdasd.asdasdasd")
 except KeyboardInterrupt:
     #Ctrl+C 입력 감지
     print("---------------------------------------------------------------")

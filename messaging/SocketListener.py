@@ -1,13 +1,7 @@
 import socket, threading, base64, json,select, asyncio
+
+from jwt import exceptions
 import messaging.MessageMaker as MessageMaker
-
-# Threaded socket listener that accepts TCP connections and prints received messages in real time
-# settings expects:
-#   - socket_listen_host: host to bind (default 0.0.0.0)
-#   - socket_listen_port: port to bind (default 12345)
-#   - socket_buffer_size: recv buffer size (default 4096)
-#   - socket_encoding: decode encoding (default utf-8)
-
 
 class AsyncSocketListener:
     def __init__(self,settings):
@@ -18,8 +12,10 @@ class AsyncSocketListener:
         self.server = None
         self.loop = None
         self._thread = None
+        self.clients = {}
     async def HandleClient(self, reader, writer):
         addr = writer.get_extra_info("peername")
+        self.clients[addr] = writer
         partialBuffer = b""
         print(f"Connection from {addr}", flush=True)
         try:
@@ -41,14 +37,51 @@ class AsyncSocketListener:
         except Exception as e:
             print("Socket Error:", type(e).__name__, e)
         finally:
+            self.clients.pop(addr, None)
             writer.close()
             await writer.wait_closed()
     async def _proccess_line(self, writer, line, addr):
         try:
             text = line.decode(self.encoding, errors="replace").strip()
             MessageMaker.SocketJSONReceiver(text)
+            #ACK response
+            """
+            response = f"ACK {res}".encode(self.encoding)
+            writer.write(response + b"\n")
+            await writer.drain()
+            """
         except Exception as e:
             print("Decode Error: ", type(e).__name__, e)
+    async def connect_and_send(self, host, port, message):
+        try:
+            reader, writer = await asyncio.open_connection(host, port)
+            addr = writer.get_extra_info('peername')
+            print(f"Outbound connected to {addr}")
+            
+            data = f"{message}\n".encode(self.encoding)
+            writer.write(data)
+            await writer.drain()
+            
+            # 옵션: 서버 응답 읽기
+            #resp = await reader.read(self.bufferSize)
+            #print(f"Outbound response: {resp.decode(errors='replace').strip()}")
+            
+            writer.close()
+            await writer.wait_closed()
+        except Exception as e:
+            print(f"Outbound send error: {type(e).__name__} {e}")
+    def Send(self, addr, port, data):
+        if not self.loop or not self.loop.is_running():
+            print("Event loop not ready")
+            return None
+        try:
+            coro = self.connect_and_send(addr, port, data)
+            future = asyncio.run_coroutine_threadsafe(coro, self.loop)
+            return future.result(timeout=10)  # 10초 타임아웃
+        except Exception as e:
+            print(f"Send external error: {type(e).__name__} {e}")
+            return None
+
     async def MainLoop(self):
         self.loop = asyncio.get_running_loop()
         self.server = await asyncio.start_server(

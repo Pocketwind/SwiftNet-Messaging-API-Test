@@ -1,4 +1,4 @@
-import json, base64, hashlib
+import json, base64, hashlib, hmac
 from lxml import etree
 import data.globalData as Data
 import messaging.SingleSend as SingleSend
@@ -84,16 +84,21 @@ def SocketJSONReceiver(data):
     data = data.split(".")
     text=data[0]
     digest=data[1]
-    textDecoded=base64.b64decode(text)
-    digestDecoded=base64.b64decode(digest)
-    textDigest=hashlib.md5(textDecoded).digest()
-    if textDigest == digestDecoded:
+    textDecoded=base64.b64decode(text.encode("utf-8")).decode("utf-8")
+
+    
+    hmacSecret=Data.GetSettings()["hmacSecret"].encode("utf-8")
+    expectedDigest=hmac.new(hmacSecret,textDecoded.encode("utf-8"),hashlib.sha256).hexdigest()
+
+    #print(f"{digest}\n{expectedDigest}")
+    if digest == expectedDigest:
         print("Message is Validated")
     else:
         print("Message Data is Corrupted")
         return
+    
     textJson=json.loads(textDecoded)
-    textJson["payload"]=base64.b64decode(textJson["payload"]).decode("utf-8")
+    #textJson["payload"]=base64.b64decode(textJson["payload"]).decode("utf-8")
     if textJson["mformat"] == "MT":
         SingleSend.SingleSendFIN(textJson, Data.GetSettings())
     elif textJson["mformat"] in ["MX", "AnyXML"]:
@@ -102,6 +107,7 @@ def SocketJSONReceiver(data):
         print("Unknown Message Format")
         return
     print("Message from Socket is processed")
+    
 """
 #Output MT 메시지
 #download한 데이터에서 실제 MT 전문 만들어내기
