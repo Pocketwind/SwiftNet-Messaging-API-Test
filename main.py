@@ -1,5 +1,4 @@
 import pip_system_certs.wrapt_requests
-import watchdog
 pip_system_certs.wrapt_requests.inject_truststore()
 import auth.Authorization as Auth
 import auth.Token as Token
