@@ -85,12 +85,16 @@ def SocketJSONReceiver(data):
     data = data.split(".")
     text=data[0]
     digest=data[1]
+    #print(repr(text))
+    #print(repr(digest))
     textDecoded=base64.b64decode(text.encode("utf-8")).decode("utf-8")
 
     
-    hmacSecret=Data.GetSettings()["hmacSecret"].encode("utf-8")
+    hmacSecret=Data.GetSettings()["hmacSecret"]
     #expectedDigest=hmac.new(hmacSecret,textDecoded.encode("utf-8"),hashlib.sha256).hexdigest()
-    expectedDigest=hv.Encode(text, hmacSecret)[1]
+    expected=hv.Encode(textDecoded, hmacSecret)
+    expected=expected.split(".")
+    expectedDigest=expected[1]
 
     #print(f"{digest}\n{expectedDigest}")
     if digest == expectedDigest:
@@ -187,7 +191,8 @@ def MessageMaker(path, settings, Send):
         file=json.load(f)
     text=json.dumps(file,separators=(',', ':'))
     m=hv.Encode(text, settings["hmacSecret"])
-    Send("10.10.20.181", 12345, m)
+    response=Send("10.10.20.181", 12345, m)
+    print(response)
     #전문 Maker
     """
     for item in file:

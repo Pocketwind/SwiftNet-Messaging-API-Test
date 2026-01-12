@@ -75,8 +75,7 @@ try:
     if settings.get("socketListenerService", False):
         print("Starting Socket Listener Service...")
         asyncSocketListener=Socket.AsyncSocketListener(settings)
-        asyncSocketListenerThread=threading.Thread(target=asyncSocketListener.main)
-        asyncSocketListenerThread.start()
+        asyncSocketListener.start()
         print("Socket Listener Service Started.")
     #Token Refresh Thread
     tokenRefreshThread=threading.Thread(target=Token.ThreadTokenRefresh, args=(settings, stop_event))
