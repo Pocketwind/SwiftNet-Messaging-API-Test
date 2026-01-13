@@ -1,4 +1,4 @@
-import json, base64, hashlib, hmac
+import json, base64, hashlib, hmac, struct
 from lxml import etree
 import data.globalData as Data
 import messaging.SingleSend as SingleSend
@@ -113,7 +113,38 @@ def SocketJSONReceiver(data):
         print("Unknown Message Format")
         return
     print("Message from Socket is processed")
-    
+
+def SocketBinaryReceiver(data):
+    try:
+        if len(data) < 32:
+            return "Invalid HMAC Binary Data Format".encode("utf-8")
+        
+        receivedHMAC=data[:32]
+        receivedData=data[32:]
+        secret=Data.GetSettings()["hmacSecret"]
+        expectedHMAC=hmac.new(secret.encode("utf-8"),receivedData,hashlib.sha256).digest()
+
+
+        if not hmac.compare_digest(receivedHMAC,expectedHMAC):
+            return "HMAC Binary Check Failed".encode("utf-8")
+        
+        payload=receivedData.decode("utf-8",errors="replace")
+        payload=json.loads(payload)
+        
+        if payload["mformat"] == "MT":
+            SingleSend.SingleSendFIN(payload, Data.GetSettings())
+            trn=payload["trn"]
+            return f"ACK {trn}".encode("utf-8")
+        elif payload["mformat"] in ["MX", "AnyXML"]:
+            SingleSend.SingleSendInterAct(payload, Data.GetSettings())
+            senderRef=payload["senderRef"]
+            return f"ACK {senderRef}".encode("utf-8")
+        else:
+            return "Invalid Data Format".encode("utf-8")
+
+    except Exception as e:
+        print(f"SocketBinaryReceiver Error:{e}")
+        return "SocketBinaryReceiver Error".encode("utf-8")
 
 #Output MT 메시지
 #download한 데이터에서 실제 MT 전문 만들어내기
@@ -186,12 +217,17 @@ def MTAckMaker(sender,receiver,status,reason,payload, mdate,mtype,reference):
 
 #download한 데이터에서 실제 전문 추출
 #Payload에 값이 들어있지만 Base64 인코딩 되어있으므로 디코딩 후 파서로 전문 제작
-def MessageMaker(path, settings, Send):
+def MessageMaker(path, settings, SendBinary):
     with open(path, "r") as f:
         file=json.load(f)
     text=json.dumps(file,separators=(',', ':'))
-    m=hv.Encode(text, settings["hmacSecret"])
-    response=Send("10.10.20.181", 12345, m)
+    
+    digest=hmac.new(settings["hmacSecret"].encode("utf-8"),text.encode("utf-8"),hashlib.sha256).digest()
+    data=digest+text.encode("utf-8")
+    length=struct.pack('>I', len(data))
+    m=length+data
+
+    response=SendBinary("10.10.20.181", 12345, m)
     print(response)
     #전문 Maker
     """

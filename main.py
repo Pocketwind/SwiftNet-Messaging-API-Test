@@ -33,7 +33,7 @@ os.makedirs(settings["downloadPath"], exist_ok=True)
 def MessageInputCallback(path):
     SingleSend.MessageCollector(path, settings)
 def MessageMakerCallback(downloadPath):
-    MessageMaker.MessageMaker(downloadPath, settings, asyncSocketListener.Send)
+    MessageMaker.MessageMaker(downloadPath, settings, asyncSocketListener.SendBinary)
 def FileInputCallback(path):
     FileAct.FileCollector(path, settings)
 try:

@@ -1,4 +1,5 @@
-import socket, threading, base64, json,select, asyncio
+from sys import exception
+import socket, threading, base64, json,select, asyncio, struct
 import messaging.MessageMaker as MessageMaker
 
 class AsyncSocketListener:
@@ -20,15 +21,21 @@ class AsyncSocketListener:
             while True:
                 data = await reader.read(self.bufferSize)
                 if not data:
-                    if partialBuffer:
-                        print(f"Ignoring {len(partialBuffer)} incomplete bytes from {addr}", flush=True)
+                    #if partialBuffer:
+                    #    print(f"Ignoring {len(partialBuffer)} incomplete bytes from {addr}", flush=True)
                     print(f"Disconnected {addr}", flush=True)
                     break
                 partialBuffer+=data
-                while b"\n" in partialBuffer:
-                    newline = partialBuffer.find(b"\n")
-                    line = partialBuffer[:newline]
-                    partialBuffer = partialBuffer[newline + 1:]
+                while len(partialBuffer) >= 4:
+                    frame_len = struct.unpack('>I', partialBuffer[:4])[0]
+                    if len(partialBuffer) < 4 + frame_len:
+                        break
+                    frame = partialBuffer[4:4+frame_len]
+                    partialBuffer = partialBuffer[4+frame_len:]
+                    await self._process_frame(writer, frame, addr)
+                    continue
+                if b"\n" in partialBuffer:
+                    line, partialBuffer = self._split_line(partialBuffer)
                     if line:
                         await self._proccess_line(writer, line, addr)
         except asyncio.CancelledError:
@@ -39,6 +46,12 @@ class AsyncSocketListener:
             self.clients.pop(addr, None)
             writer.close()
             await writer.wait_closed()
+    def _split_line(self, buffer):
+        newline = buffer.find(b'\n')
+        if newline == -1:
+            return b"", buffer
+        line = buffer[:newline]
+        return line, buffer[newline+1:]
     async def _proccess_line(self, writer, line, addr):
         try:
             text = line.decode(self.encoding, errors="replace").strip()
@@ -50,7 +63,17 @@ class AsyncSocketListener:
             await writer.drain()
             
         except Exception as e:
-            print("Decode Error: ", type(e).__name__, e)
+            print("Line Decode Error: ", type(e).__name__, e)
+    async def _process_frame(self, writer, data, addr):
+        try:
+            ack = MessageMaker.SocketBinaryReceiver(data)
+
+            response = struct.pack('>I', len(ack)) + ack
+
+            writer.write(response)
+            await writer.drain()
+        except Exception as e:
+            print("FrameByte Decode Error: ", type(e).__name__, e)
     async def connect_and_send(self, host, port, message):
         try:
             reader, writer = await asyncio.open_connection(host, port)
@@ -83,6 +106,32 @@ class AsyncSocketListener:
         except Exception as e:
             print(f"Send external error: {type(e).__name__} {e}")
             return None
+    async def connect_and_send_binary(self, host, port, data):
+        try:
+            reader, writer = await asyncio.open_connection(host, port)
+            addr = writer.get_extra_info('peername')
+            print(f"Sending binary data to {addr}")
+            writer.write(data)
+            await writer.drain()
+
+            len_data = await asyncio.wait_for(reader.readexactly(4), timeout=5.0)
+            ack_len = struct.unpack('>I', len_data)[0]
+            ack_bytes = await reader.readexactly(ack_len)
+            ack = ack_bytes.decode(self.encoding, errors='replace').strip()
+
+            writer.close()
+            await writer.wait_closed()
+            return ack
+        except Exception as e:
+            print(f"Binary send error:{type(e).__name__} {e}")
+            return None
+    def SendBinary(self, addr, port, data):
+        if not self.loop or not self.loop.is_running():
+            print("Event loop not ready")
+            return None
+        coro = self.connect_and_send_binary(addr, port, data)
+        future = asyncio.run_coroutine_threadsafe(coro, self.loop)
+        return future.result(timeout=10)
     async def MainLoop(self):
         try:
             self.loop = asyncio.get_running_loop()
