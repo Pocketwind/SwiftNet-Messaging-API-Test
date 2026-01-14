@@ -1,142 +1,203 @@
 from sys import exception
 import socket, threading, base64, json,select, asyncio, struct
+from typing import final
 import messaging.MessageMaker as MessageMaker
 
 class AsyncSocketListener:
     def __init__(self,settings):
         self.host = settings.get("socketListenerHost", "0.0.0.0")
         self.port = int(settings.get("socketListenerPort", settings.get("socketListnerPort", 12345)))
-        self.bufferSize = int(settings.get("socketBufferSize", 4096))
+        self.buffer_size = int(settings.get("socketBufferSize", 4096))
         self.encoding = settings.get("socketEncoding", "utf-8")
+        self.settings = settings
         self.server = None
         self.loop = None
         self._thread = None
         self.clients = {}
-    async def HandleClient(self, reader, writer):
+    async def handle_client(self, reader, writer):
         addr = writer.get_extra_info("peername")
         self.clients[addr] = writer
-        partialBuffer = b""
+        buffer = b""
         print(f"Connection from {addr}", flush=True)
+
         try:
-            while True:
-                data = await reader.read(self.bufferSize)
-                if not data:
-                    #if partialBuffer:
-                    #    print(f"Ignoring {len(partialBuffer)} incomplete bytes from {addr}", flush=True)
-                    print(f"Disconnected {addr}", flush=True)
-                    break
-                partialBuffer+=data
-                while len(partialBuffer) >= 4:
-                    frame_len = struct.unpack('>I', partialBuffer[:4])[0]
-                    if len(partialBuffer) < 4 + frame_len:
+            try:
+                first_chunk = await asyncio.wait_for(reader.read(self.buffer_size), timeout=3.0)
+            except asyncio.TimeoutError:
+                print(f"Connection timeout from {addr}")
+                writer.close()
+                await writer.wait_closed()
+                return
+            if not first_chunk:
+                writer.close()
+                return
+            magic_byte = int(self.settings.get("magicByte", "0xEE"), 16)
+            if first_chunk[0] == magic_byte:
+                buffer = first_chunk
+                is_http = False
+            else:
+                first_string = first_chunk[:10].decode(errors="ignore").upper()
+                if any(first_string.startswith(m) for m in ["GET", "POST", "PUT", "DELETE", "HEAD", "OPT"]):
+                    is_http = True
+                else:
+                    buffer = first_chunk
+                    is_http = False
+
+            # [분기 처리]
+            if is_http:
+                await self._process_http_request(reader, writer, first_chunk)
+                return
+            else:
+                while True:
+                    while len(buffer) >= 6:
+                        magic, m_type, frame_len = struct.unpack('>BBI', buffer[:6])
+                        total_packet_len = 6 + frame_len
+                        
+                        if len(buffer) < total_packet_len:
+                            break
+                        
+                        frame = buffer[:total_packet_len]
+                        buffer = buffer[total_packet_len:]
+                        
+                        await self._process_frame(writer, frame, addr)
+                        continue # 버퍼에 남은 데이터가 또 있을 수 있으므로 반복
+
+                    # 2. 추가 데이터 읽기
+                    try:
+                        data = await reader.read(self.buffer_size)
+                    except ConnectionError:
                         break
-                    frame = partialBuffer[4:4+frame_len]
-                    partialBuffer = partialBuffer[4+frame_len:]
-                    await self._process_frame(writer, frame, addr)
-                    continue
-                if b"\n" in partialBuffer:
-                    line, partialBuffer = self._split_line(partialBuffer)
-                    if line:
-                        await self._proccess_line(writer, line, addr)
+
+                    if not data:
+                        print(f"Disconnected {addr}", flush=True)
+                        break
+                    buffer += data
         except asyncio.CancelledError:
-            print("Cancelled Error:", type(e).__name__, e)
+            pass
         except Exception as e:
             print("Socket Error:", type(e).__name__, e)
         finally:
             self.clients.pop(addr, None)
-            writer.close()
-            await writer.wait_closed()
-    def _split_line(self, buffer):
-        newline = buffer.find(b'\n')
-        if newline == -1:
-            return b"", buffer
-        line = buffer[:newline]
-        return line, buffer[newline+1:]
-    async def _proccess_line(self, writer, line, addr):
-        try:
-            text = line.decode(self.encoding, errors="replace").strip()
-            MessageMaker.SocketJSONReceiver(text)
-            #ACK response
-            
-            response = "ACK".encode(self.encoding)
-            writer.write(response + b"\n")
-            await writer.drain()
-            
-        except Exception as e:
-            print("Line Decode Error: ", type(e).__name__, e)
+            try:
+                writer.close()
+                await writer.wait_closed()
+            except Exception:
+                pass
     async def _process_frame(self, writer, data, addr):
+        #Incoming
+        magic=int(self.settings.get("magicByte", "0xEE"), 16)
         try:
-            ack = MessageMaker.SocketBinaryReceiver(data)
-
-            response = struct.pack('>I', len(ack)) + ack
-
-            writer.write(response)
-            await writer.drain()
+            #헤더 에러
+            if len(data)<6:
+                ack="Invalid Bytes".encode(self.encoding)
+                raise Exception("Invalid Header")
+            magic_received, message_type = struct.unpack(">BB", data[:2])
+            #magic 에러
+            if magic_received != magic:
+                ack="Invalid Bytes".encode(self.encoding)
+                raise Exception("Invalid Magic Bytes")
+            #실제 데이터
+            payload=data[6:]
+            #message type: 1.json, 2.binary, 3.string, 4.json + hmac
+            if message_type == 1:
+                #JSON
+                payload=payload.decode(self.encoding)
+                payload=json.loads(payload)
+            elif message_type == 2:
+                #binary
+                pass
+            elif message_type == 3:
+                #string
+                payload=payload.decode(self.encoding)
+            elif message_type == 4:
+                #HMAC + JSON
+                pass
+            else:
+                ack="Invalid Bytes".encode(self.encoding)
+                raise Exception("Invalid Message Type")
         except Exception as e:
-            print("FrameByte Decode Error: ", type(e).__name__, e)
-    async def connect_and_send(self, host, port, message):
-        try:
-            reader, writer = await asyncio.open_connection(host, port)
-            addr = writer.get_extra_info('peername')
-            print(f"Outbound connected to {addr}")
-            
-            data = f"{message}\n".encode(self.encoding)
-            writer.write(data)
-            await writer.drain()
-            
-            # Ack
-            ack=None
-            resp_data = await asyncio.wait_for(reader.read(self.bufferSize), timeout=5.0)
-            ack = resp_data.decode(self.encoding, errors="replace").strip()
-            
-            writer.close()
-            await writer.wait_closed()
+            print("_process_frame: ", type(e).__name__, e)
+            #string으로 보내기
+            """ack_header=struct.pack(">BBI", magic, 3, len(ack))
+            ack_packet=ack_header+ack
+            writer.write(ack_packet)
+            await writer.drain()"""
+        print(payload)
+        ack="ACK".encode(self.encoding)
+        ack_header=struct.pack(">BBI", magic, 3, len(ack))
+        ack_packet=ack_header+ack
+        writer.write(ack_packet)
+        await writer.drain()
+    async def _process_http_request(self, reader, writer, first_chunk):
+        request_line = first_chunk.decode(errors='ignore').split('\n')[0]
+        method_path = request_line.split()[:2]
 
-            return ack
-        except Exception as e:
-            print(f"Outbound send error: {type(e).__name__} {e}")
-    def Send(self, addr, port, data):
-        if not self.loop or not self.loop.is_running():
-            print("Event loop not ready")
-            return None
-        try:
-            coro = self.connect_and_send(addr, port, data)
-            future = asyncio.run_coroutine_threadsafe(coro, self.loop)
-            return future.result(timeout=10)  # 10초 타임아웃
-        except Exception as e:
-            print(f"Send external error: {type(e).__name__} {e}")
-            return None
-    async def connect_and_send_binary(self, host, port, data):
+        response = f"HTTP/1.1 200 OK\r\nContent-Length: 13\r\n\r\nReceived Path:{method_path}\r\n".encode()
+
+        writer.write(response)
+        await writer.drain()
+        writer.close()
+        await writer.wait_closed()
+    async def connect_and_send(self, host, port, data, message_type = 1):
+        #Outgoing
+        magic=int(self.settings.get("magicByte", "0xEE"), 16)
         try:
             reader, writer = await asyncio.open_connection(host, port)
             addr = writer.get_extra_info('peername')
             print(f"Sending binary data to {addr}")
-            writer.write(data)
-            await writer.drain()
 
-            len_data = await asyncio.wait_for(reader.readexactly(4), timeout=5.0)
-            ack_len = struct.unpack('>I', len_data)[0]
-            ack_bytes = await reader.readexactly(ack_len)
-            ack = ack_bytes.decode(self.encoding, errors='replace').strip()
-
-            writer.close()
-            await writer.wait_closed()
-            return ack
+            #message type: 1.json, 2.binary, 3.string, 4.json + hmac
+            if message_type == 4:
+                #HMAC + JSON 먼저 분기
+                payload=data
+                packet_header=struct.pack(">BBI", magic, 2, len(payload))
+                packet_data=packet_header+payload
+            elif isinstance(data, (dict, list)):
+                #JSON
+                payload=json.dumps(data, ensure_ascii=False).encode(self.encoding)
+                packet_header=struct.pack(">BBI", magic, 1, len(payload))
+                packet_data=packet_header+payload
+            elif isinstance(data, bytes):
+                #Binary
+                payload=data
+                packet_header=struct.pack(">BBI", magic, 2, len(payload))
+                packet_data=packet_header+payload
+            elif isinstance(data, str):
+                #String
+                payload=str(data).encode(self.encoding)
+                packet_header=struct.pack(">BBI", magic, 3, len(payload))
+                packet_data=packet_header+payload
+            else:
+                raise Exception("Unsupported Message Type")
         except Exception as e:
-            print(f"Binary send error:{type(e).__name__} {e}")
+            print(f"connect_and_send Error: {e}")
             return None
-    def SendBinary(self, addr, port, data):
+        #데이터 전송
+        writer.write(packet_data)
+        await writer.drain()
+
+        #ack 수신
+        len_data = await asyncio.wait_for(reader.readexactly(6), timeout=5.0)
+        _, _, ack_len = struct.unpack('>BBI', len_data)
+        ack_bytes = await reader.readexactly(ack_len)
+        ack = ack_bytes.decode(self.encoding, errors='replace').strip()
+
+        writer.close()
+        await writer.wait_closed()
+
+        return ack
+    def send(self, addr, port, data):
         if not self.loop or not self.loop.is_running():
             print("Event loop not ready")
             return None
-        coro = self.connect_and_send_binary(addr, port, data)
+        coro = self.connect_and_send(addr, port, data)
         future = asyncio.run_coroutine_threadsafe(coro, self.loop)
         return future.result(timeout=10)
     async def MainLoop(self):
         try:
             self.loop = asyncio.get_running_loop()
             self.server = await asyncio.start_server(
-                self.HandleClient,
+                self.handle_client,
                 self.host,
                 self.port,
                 reuse_address=True,
@@ -146,8 +207,6 @@ class AsyncSocketListener:
         except OSError as e:
             print(f"Bind failed: {e} - port {self.port} in use?")
             return
-        
-        
         try:
             async with self.server:
                 await self.server.serve_forever()
