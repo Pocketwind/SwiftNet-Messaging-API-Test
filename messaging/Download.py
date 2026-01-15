@@ -15,7 +15,11 @@ def Download(accessToken, settings):
         print(f"\nFile {settings["distFile"]} not found.\nNeed to be updated later\n\n")
         return 
     """
-    dist=Data.GetDistribution()["distributions"]
+    try:
+        dist=Data.GetDistribution()["distributions"]
+    except:
+        return
+
 
     #2. 메시지 ID 저장할 배열
     messages=[]
