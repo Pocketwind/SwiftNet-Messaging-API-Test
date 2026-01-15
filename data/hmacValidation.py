@@ -1,25 +1,38 @@
 import base64, hashlib, hmac
 
-def Validation(data):
-    datasplit = data.split(".")
-    text=datasplit[0]
-    digest=datasplit[1]
-    textDecoded=base64.b64decode(text.encode("utf-8")).decode("utf-8")
-    
-    hmacSecret=b"Abcd1234Abcd1234"
-    expectedDigest=hmac.new(hmacSecret,textDecoded.encode("utf-8"),hashlib.sha256).hexdigest()
+def validation(data, secret):
+    if isinstance(secret, str):
+        secret=secret.encode("utf-8")
 
-    if digest == expectedDigest:
-        return True
-    else:
+    if len(data) < 32:
         return False
-def Decode(data):
-    datasplit = data.split(".")
-    text=datasplit[0]
-    textDecoded=base64.b64decode(text.encode("utf-8")).decode("utf-8")
-    return textDecoded
+    
+    receivedHMAC=data[:32]
+    receivedData=data[32:]
+    expectedHMAC=hmac.new(secret,receivedData,hashlib.sha256).digest()
 
-def Encode(data, secret):
-    textB64=base64.b64encode(data.encode("utf-8")).decode("utf-8")
-    digest=hmac.new(secret.encode("utf-8"),data.encode("utf-8"),hashlib.sha256).hexdigest()
-    return f"{textB64}.{digest}"
+    #print(receivedHMAC)
+    #print(expectedHMAC)
+
+    if not hmac.compare_digest(receivedHMAC,expectedHMAC):
+        return False
+    else:
+        return True
+    
+def encode(text, secret):
+    if isinstance(secret, str):
+        secret=secret.encode("utf-8")
+    if isinstance(text, str):
+        text=text.encode("utf-8")
+
+    hashed=hmac.new(secret,text,hashlib.sha256).digest()
+    return hashed + text
+
+def decode(text, secret):
+    if isinstance(secret, str):
+        secret=secret.encode("utf-8")
+
+    payload=text[32:]
+    text=payload.decode("utf-8")
+    
+    return text
