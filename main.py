@@ -2,6 +2,7 @@ import pip_system_certs.wrapt_requests
 pip_system_certs.wrapt_requests.inject_truststore()
 import auth.Authorization as Auth
 import auth.Token as Token
+import auth.HSM as HSM
 import messaging.Retrieve as Retrieve
 import messaging.Download as Download
 import messaging.SingleSend as SingleSend
@@ -13,14 +14,22 @@ import data.globalData as Data
 import json, threading, time, os, warnings, pip_system_certs, asyncio
 warnings.filterwarnings("ignore", message="Unverified HTTPS request")
 
+#Settings 읽어오기
 with open("settings.json","r") as f:
     settings=json.load(f)
-with open(settings["certificatePath"], "r") as f:
-    certificate=f.read()
-with open(settings["privatePath"], "r") as f:
-    private=f.read()
-Data.SetCertificate(certificate)
-Data.SetPrivateKey(private)
+
+#HSM 사용여부 확인
+use_hsm=settings.get("useHSM", False)
+if use_hsm:
+    hsm_id=settings.get("hsmID", None)
+    Data.SetCertificate(HSM.get_cert_pem(hsm_id))
+else:
+    with open(settings["certificatePath"], "r") as f:
+        certificate=f.read()
+    with open(settings["privatePath"], "r") as f:
+        private=f.read()
+    Data.SetCertificate(certificate)
+    Data.SetPrivateKey(private)
 Data.SetSettings(settings)
 
 os.makedirs(settings["inputPath"], exist_ok=True)

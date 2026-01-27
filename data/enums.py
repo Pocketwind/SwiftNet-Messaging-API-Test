@@ -5,3 +5,4 @@ class MessageType(IntEnum):
     BINARY = 2
     STRING = 3
     HMAC_JSON = 4
+    HMAC_STRING = 5

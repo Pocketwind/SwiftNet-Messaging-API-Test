@@ -1,5 +1,6 @@
 from email import message
 import requests, json, base64, os, shutil
+from auth import HSM
 import auth.Token as Token
 import data.globalData as Data
 import messaging.MessageMaker as MessageMaker
@@ -27,7 +28,11 @@ def SingleSendFIN(messageData, settings):
 
     url=settings["messageUrl"]
 
-    signature=Token.create_nr_signature(settings["subject"], Data.GetPrivateKey(), Data.GetCertificate(), body, url)
+    
+    if settings["useHSM"]:
+        signature=Token.create_nr_signature_hsm(settings["subject"], body, url)
+    else:
+        signature=Token.create_nr_signature(settings["subject"], Data.GetPrivateKey(), Data.GetCertificate(), body, url)
 
     header={
         "Authorization":f"Bearer {accessToken}",
@@ -69,7 +74,10 @@ def SingleSendInterAct(messageData, settings):
 
     bodyString=json.dumps(body, separators=(',', ':'))
 
-    signature=Token.create_nr_signature(settings["subject"], Data.GetPrivateKey(), Data.GetCertificate(), body, url)
+    if settings["useHSM"]:
+        signature=Token.create_nr_signature_hsm(settings["subject"], body, url)
+    else:
+        signature=Token.create_nr_signature(settings["subject"], Data.GetPrivateKey(), Data.GetCertificate(), body, url)
     
     header={
         "Authorization":f"Bearer {accessToken}",

@@ -4,6 +4,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 import auth.Authorization as Auth
 import data.globalData as Data
+import auth.HSM as HSM
 
 #토큰 폐기
 #API 예제 Postman에만 있음
@@ -93,12 +94,6 @@ def GenerateNewTokensWithJWT(settings):
     return accessToken, refreshToken
 
 def CreateJWT(settings):
-    """
-    with open(settings["certificatePath"], "r") as f:
-        cert=f.read()
-    with open(settings["privatePath"], "r") as f:
-        private=f.read()
-    """
     currentTime=int(time.time())
     payload={
         "iss": settings["consumerKey"],
@@ -120,7 +115,10 @@ def CreateJWT(settings):
                 .replace("\r", "")
                 .replace(" ", "")]
     }
-    jwtToken=jwt.encode(payload, Data.GetPrivateKey(), algorithm="RS256", headers=header)
+    if settings["useHSM"]:
+        jwtToken=HSM.create_jwt(payload, settings["hsmID"])
+    else:
+        jwtToken=jwt.encode(payload, Data.GetPrivateKey(), algorithm="RS256", headers=header)
     return jwtToken
 
 #Messaging을 위한 Access Token 발급을 위한 부분
@@ -256,8 +254,56 @@ def create_nr_signature(sub, private_key_pem, certificate_pem, request_body, url
     jwt_token = f"{signing_input}.{signature_enc}"
     return jwt_token
 
+def create_nr_signature_hsm(sub, request_body, url):
+    # 1) 인증서 값만 추출 후 헤더 만들기
+    certificate_pem = Data.GetCertificate()
+    x5c_cert = normalize_cert_to_x5c(certificate_pem)
+    header = {"typ": "JWT", "alg": "RS256", "x5c": [x5c_cert]}
 
+    # 2) audience -> API Call 할 url에서부터 얻어내는 값
+    parsed_url = urlparse(url)
+    aud_dynamic = parsed_url.hostname + parsed_url.path
+    if parsed_url.query:
+        aud_dynamic += '?' + parsed_url.query
 
+    # 3) JTI -> 실무에서는 더 복잡한 방식으로 구현 필수
+    charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+    new_jti = ''.join(random.choice(charset) for _ in range(12))
+
+    # 4) body 미니파이 -> 쿼리 보낼때 트래픽 감소 위해 공백 모두 제거함
+    if isinstance(request_body, dict):
+        body_string = json.dumps(request_body, separators=(',', ':'))  # minified
+    else:
+        body_string = request_body
+
+    # 5) digest 계산 (Postman: stob64u -> addPadding -> SHA256 -> Base64)
+    b64url_padded = b64url_with_padding_from_str(body_string)   # base64url with padding
+    digest_hash = hashlib.sha256(b64url_padded.encode('utf-8')).digest()
+    digest = base64.b64encode(digest_hash).decode('utf-8')     # standard Base64
+
+    # 6) JWT에 들어가는 값
+    current_time = int(time.time())
+    payload = {
+        "aud": aud_dynamic,
+        "sub": sub,
+        "jti": new_jti,
+        "exp": current_time + 300,
+        "iat": current_time,
+        "digest": digest
+    }
+
+    # 7) signing input (base64url WITHOUT padding)
+    header_enc = base64.urlsafe_b64encode(json.dumps(header, separators=(',', ':')).encode('utf-8')).decode('utf-8').rstrip('=')
+    payload_enc = base64.urlsafe_b64encode(json.dumps(payload, separators=(',', ':')).encode('utf-8')).decode('utf-8').rstrip('=')
+    signing_input = f"{header_enc}.{payload_enc}"
+
+    # 8) 서명 (RS256)
+    id=Data.GetSettings()["hsmID"]
+    signature=HSM.sign(signing_input, id)
+    signature_enc = base64.urlsafe_b64encode(signature).decode('utf-8').rstrip('=')
+
+    jwt_token = f"{signing_input}.{signature_enc}"
+    return jwt_token
 
 def ThreadTokenRefresh(settings, stopEvent):
     while not stopEvent.is_set():
@@ -269,3 +315,5 @@ def ThreadTokenRefresh(settings, stopEvent):
             Data.SetAccessToken(accessToken)
         except Exception as e:
             print("Token Refresh - ThreadTokenRefresh error:", type(e).__name__, e)
+
+            
