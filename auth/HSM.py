@@ -1,10 +1,9 @@
 import pkcs11, time, base64, json
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
+import data.globalData as Data
 
 
-
-# ... 로그인 코드 생략
 def sign(data, id):
     lib = pkcs11.lib(r'C:\Windows\System32\eTPKCS11.dll')
 
@@ -12,7 +11,7 @@ def sign(data, id):
     slot = slots[0]  # 첫 슬롯 (pkcs11-tool --list-slots로 확인)
     token = slot.get_token()  # 또는 lib.get_tokens(token_present=False)[0]
 
-    user_pin="Abcd1234"
+    user_pin=Data.GetSettings()["hsmSecret"]
     with token.open(user_pin=user_pin) as session:
         key_id_bytes = bytes.fromhex(id)
         
@@ -36,7 +35,7 @@ def get_cert_pem(id):
     slot = slots[0]  # 첫 슬롯 (pkcs11-tool --list-slots로 확인)
     token = slot.get_token()  # 또는 lib.get_tokens(token_present=False)[0]
 
-    user_pin="Abcd1234"
+    user_pin=Data.GetSettings()["hsmSecret"]
     with token.open(user_pin=user_pin) as session:
         key_id_bytes = bytes.fromhex(id)
             
@@ -60,7 +59,7 @@ def create_jwt(payload, id):
     slot = slots[0]  # 첫 슬롯 (pkcs11-tool --list-slots로 확인)
     token = slot.get_token()  # 또는 lib.get_tokens(token_present=False)[0]
 
-    user_pin="Abcd1234"
+    user_pin=Data.GetSettings()["hsmSecret"]
     with token.open(user_pin=user_pin) as session:
         key_id_bytes = bytes.fromhex(id)
         
