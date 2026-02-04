@@ -20,7 +20,6 @@ class AsyncSocketListener:
         self.clients[addr] = writer
         print(f"Connection from {addr}", flush=True)
 
-        # 반드시 close 되도록 보장 (RAII 패턴)
         try:
             buffer = b""
 
