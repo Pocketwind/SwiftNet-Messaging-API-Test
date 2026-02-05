@@ -1,3 +1,4 @@
+from email import message
 import threading, json, asyncio, struct
 import messaging.MessageMaker as MessageMaker
 import data.hmacValidation as hv
@@ -133,6 +134,17 @@ class AsyncSocketListener:
                 else:
                     ack="Invalid HMAC Signature".encode(self.encoding)
                     raise Exception("Invalid HMAC Signature")
+            elif message_type == MessageType.HMAC_JSON:
+                #HMAC + JSON
+                result = hv.validation(payload, self.settings["hmacSecret"])
+                if result:
+                    print("Validated")
+                    payload=hv.decode(payload, self.settings["hmacSecret"])
+                    payload=payload.decode(self.encoding)
+                    payload=json.loads(payload)
+                else:
+                    ack="Invalid HMAC Signature".encode(self.encoding)
+                    raise Exception("Invalid HMAC Signature")
             else:
                 ack="Invalid Bytes".encode(self.encoding)
                 raise Exception("Invalid Message Type")
@@ -144,7 +156,9 @@ class AsyncSocketListener:
             writer.write(ack_packet)
             await writer.drain()
             return
+        ######
         print(payload)
+        ######
         ack="ACK".encode(self.encoding)
         ack_header=struct.pack(">BBI", self.magic_bytes, MessageType.STRING, len(ack))
         ack_packet=ack_header+ack
