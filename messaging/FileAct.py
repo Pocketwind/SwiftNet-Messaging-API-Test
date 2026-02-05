@@ -84,7 +84,11 @@ def SingleSendFileAct(path, settings):
     #Access를 통한 전송이 아니기 때문에 NR Signature로 무결성, 암호화 검증함
     #쿼리 보낼 Body, 공개키, 개인키, url을 사용해 실제 사용자가 맞는지 확인
     #아마 가장 많이 오류 날 부분으로 예상됨
-    signature=Token.create_nr_signature(settings["subject"], Data.GetPrivateKey(), Data.GetCertificate(), body, url)
+    if settings["useHSM"]:
+        signature=Token.create_nr_signature_hsm(settings["subject"], body, url)
+    else:
+        signature=Token.create_nr_signature(settings["subject"], Data.GetPrivateKey(), Data.GetCertificate(), body, url)
+
     headers={
         "Authorization":f"Bearer {accessToken}",
         "X-SWIFT-Signature":signature,
