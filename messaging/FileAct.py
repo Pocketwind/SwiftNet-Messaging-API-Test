@@ -7,7 +7,7 @@ from lxml import etree
 #FileAct는 3개 파트로 분리되어있음
 #Initiate -> Upload -> Complete
 #Initiate: 파일의 대략적인 정보와 Requestor, Responder 정보 
-#Upload: 실제 파일 Alliance로 업로드하는 파트(S3 Bucket PUT 참조 - 인터넷 검색하면 나옴)
+#Upload: 실제 파일 Cloud(AWS?)로 업로드하는 파트(S3 Bucket PUT 참조 - 인터넷 검색하면 나옴)
 #Complete: 파일 업로드 종료 알림 -> 실제 FileAct 메시지 생성
 def SingleSendFileAct(path, settings):
     #1. 토큰, 인증서 값 읽어오기
@@ -43,7 +43,7 @@ def SingleSendFileAct(path, settings):
     serviceCode="swift.generic.fast!p"  #사내 서버 미가입으로 사용 불가
     requestor="ou=xxx,o=etpxkrss,o=swift"   
     responder="ou=xxx,o=etpxkrss,o=swift"
-    messageType="pacs.008.001.08"  #FileAct라 메시지 타입은 임의로 설정함
+    messageType="type.FileAct"  #FileAct라 메시지 타입은 임의로 설정함
     fileLogicalName=filename
     body={
         #파일 정보
