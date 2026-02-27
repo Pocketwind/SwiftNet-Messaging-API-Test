@@ -68,7 +68,7 @@ def SingleSendFIN(messageData, settings):
         "Accept":"application/json"
     }
 
-    response=requests.post(url, headers=header, data=bodyString, proxies=settings["proxies"], verify=True)
+    response=requests.post(url, headers=header, data=bodyString, proxies=settings["proxies"], verify=True, timeout=5)
     if response.status_code == 201:
         return True
     else:
@@ -113,7 +113,7 @@ def SingleSendInterAct(messageData, settings):
         "Accept":"application/json"
     }
 
-    response=requests.post(url, headers=header, data=bodyString, proxies=settings["proxies"], verify=True)
+    response=requests.post(url, headers=header, data=bodyString, proxies=settings["proxies"], verify=True, timeout=5)
     if response.status_code == 201:
         return True
     else:

@@ -54,7 +54,7 @@ def Retrieve(accessToken, settings):
         "limit":settings["maxDistSize"],
         "offset":0
     }
-    response=requests.get(url, headers=headers, params=params, proxies=settings["proxies"], verify=True).json()
+    response=requests.get(url, headers=headers, params=params, proxies=settings["proxies"], verify=True, timeout=5).json()
     return response
 
 #파일로 읽고쓰기때문에 Deadlock 발생 -> 임시파일로 atomic하게 저장하면서 방지

@@ -124,7 +124,7 @@ def SingleSendFileAct(path, settings):
     }
 
     #6. FileAct Initiate
-    response=requests.post(url, headers=headers, data=bodyString, proxies=settings["proxies"], verify=True).json()
+    response=requests.post(url, headers=headers, data=bodyString, proxies=settings["proxies"], verify=True, timeout=5).json()
 
     transferID=response["transfer_id"]
     uploadUrl=response["file_transfer_response"]["signed_urls"][0]["url"]
@@ -143,7 +143,7 @@ def SingleSendFileAct(path, settings):
             # POST form (S3 POST-style): include provided fields and file
             data = fields.copy()
             files = {"file": (filename, f)}
-            r = requests.post(uploadUrl, data=data, files=files, proxies=settings.get("proxies"), verify=True)
+            r = requests.post(uploadUrl, data=data, files=files, proxies=settings.get("proxies"), verify=True, timeout=5)
         elif method == "PUT":
             # PUT raw bytes; avoid adding extra headers unless signature expects them
             headers_put = {
@@ -155,9 +155,9 @@ def SingleSendFileAct(path, settings):
             }
             if expected_ct:
                 headers_put["Content-Type"] = expected_ct
-            r = requests.put(uploadUrl, data=f, headers=headers_put, proxies=settings.get("proxies"), verify=True)
+            r = requests.put(uploadUrl, data=f, headers=headers_put, proxies=settings.get("proxies"), verify=True, timeout=5)
         else:
-            r = requests.post(uploadUrl, data=f, proxies=settings.get("proxies"), verify=True)
+            r = requests.post(uploadUrl, data=f, proxies=settings.get("proxies"), verify=True, timeout=5)
 
     #status_code로 예외 처리 추가 필요함
 
@@ -168,7 +168,7 @@ def SingleSendFileAct(path, settings):
         "transfer-id":transferID
     }
     #Complete 요청 시 body값에 빈 딕셔너리 값 넣어줘야 에러가 안남 -> 버그?
-    response=requests.post(url, headers=headers, params=path, data="{}",proxies=settings["proxies"], verify=True)
+    response=requests.post(url, headers=headers, params=path, data="{}",proxies=settings["proxies"], verify=True, timeout=5)
     print(response.json())
     print("---------------------------------------------------------------")
 

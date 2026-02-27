@@ -55,7 +55,7 @@ def RevokeToken(settings):
     body={
         "token":Data.GetAccessToken()
     }
-    response=requests.post(url,headers=header,data=body,proxies=settings["proxies"],verify=False)
+    response=requests.post(url,headers=header,data=body,proxies=settings["proxies"],verify=False, timeout=5)
     return response
 
 #토큰 Refresh
@@ -80,7 +80,8 @@ def RefreshToken(settings):
                            headers=headers, 
                            data=body, 
                            proxies=settings["proxies"], 
-                           verify=False)
+                           verify=False,
+                           timeout=5)
 
     responseJson=response.json()
     refreshToken=responseJson.get("refresh_token")
@@ -111,7 +112,7 @@ def GetBearerToken(url, consumerCred):
         "username":"sandbox-id",
         "password":"sandbox-key"
     }
-    response=requests.post(url, headers=headers, data=body)
+    response=requests.post(url, headers=headers, data=body, timeout=5)
     return response.json()
 
 #-------------------------------JWT-------------------------------------
@@ -170,7 +171,7 @@ def GetBearerTokenWithJWT(settings):
         "Authorization": f"Basic {MakeRequestKey(settings["consumerKey"],settings["consumerSecret"])}",
         "Content-Type": "application/x-www-form-urlencoded"
     }
-    response=requests.post(settings["url"], headers=header, data=body, proxies=settings["proxies"], verify=False)
+    response=requests.post(settings["url"], headers=header, data=body, proxies=settings["proxies"], verify=False, timeout=5)
     responseJson=response.json()
     if responseJson.get("access_token") == None:
         raise Exception(f"Failed to get Access Token\n{responseJson}")
