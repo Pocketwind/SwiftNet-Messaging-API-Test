@@ -40,13 +40,23 @@ def MTParser(message):
     sender=lines[0][6:18]
     finType=lines[0][33:36]
     receiver=lines[0][36:48]
-    start_token = "{4:"
-    end_token = "\n-}"
-    start_idx = message.find(start_token)
-    end_idx = message.find(end_token, start_idx + len(start_token))
-    if start_idx == -1 or end_idx == -1:
-        raise ValueError("Invalid MT message format: block4 not found")
-    payload = message[start_idx + len(start_token):end_idx].strip("\r\n")
+    block4=""
+    start=0
+    end=0
+    #block4 시작 체크
+    for i, line in enumerate(lines):
+        if line[:-3] == "4:\n":
+            start=i
+            break
+    #block4 끝 체크
+    for i, line in enumerate(lines):
+        if line == "-}":
+            end=i
+            break
+    #MT전문에서 block4 추출
+    payload=lines[start+1:end]
+    #lines 배열 crlf로 붙이기
+    payload="\r\n".join(payload)
     trn=""
     #trn 체크
     for line in lines:
