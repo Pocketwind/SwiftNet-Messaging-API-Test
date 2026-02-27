@@ -1,8 +1,37 @@
-import json, base64, hashlib, hmac, struct
+import json, base64, hashlib, hmac, struct, threading
+from datetime import datetime
 from lxml import etree
 import data.globalData as Data
 import messaging.SingleSend as SingleSend
+import messaging.Watchdog as Watchdog
 import data.hmacValidation as hv
+
+
+class MessageMakerService:
+    def __init__(self, settings, send_binary):
+        self.settings = settings
+        self.stop_event = threading.Event()
+        self.send_binary = send_binary
+        self.thread = None
+
+    def _message_maker_callback(self, download_path):
+        MessageMaker(download_path, self.settings, self.send_binary)
+
+    def run_loop(self):
+        Watchdog.ThreadWatchdog(self.settings["downloadPath"], self._message_maker_callback, self.stop_event)
+
+    def start(self):
+        if self.thread and self.thread.is_alive():
+            return
+        self.thread = threading.Thread(target=self.run_loop)
+        self.thread.start()
+
+    def stop(self):
+        self.stop_event.set()
+
+    def join(self, timeout=5):
+        if self.thread:
+            self.thread.join(timeout=timeout)
 
 #Input MT 메시지 Block4만 추출하기
 #보낼때 block4 값만 보낼수있음
@@ -11,23 +40,13 @@ def MTParser(message):
     sender=lines[0][6:18]
     finType=lines[0][33:36]
     receiver=lines[0][36:48]
-    block4=""
-    start=0
-    end=0
-    #block4 시작 체크
-    for i, line in enumerate(lines):
-        if line[:-3] == "4:\n":
-            start=i
-            break
-    #block4 끝 체크
-    for i, line in enumerate(lines):
-        if line == "-}":
-            end=i
-            break
-    #MT전문에서 block4 추출
-    payload=lines[start+1:end]
-    #lines 배열 crlf로 붙이기
-    payload="\r\n".join(payload)
+    start_token = "{4:"
+    end_token = "\n-}"
+    start_idx = message.find(start_token)
+    end_idx = message.find(end_token, start_idx + len(start_token))
+    if start_idx == -1 or end_idx == -1:
+        raise ValueError("Invalid MT message format: block4 not found")
+    payload = message[start_idx + len(start_token):end_idx].strip("\r\n")
     trn=""
     #trn 체크
     for line in lines:

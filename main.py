@@ -7,11 +7,10 @@ import messaging.Retrieve as Retrieve
 import messaging.Download as Download
 import messaging.SingleSend as SingleSend
 import messaging.FileAct as FileAct
-import messaging.Watchdog as Watchdog
 import messaging.MessageMaker as MessageMaker
 import messaging.SocketListener as Socket
 import data.globalData as Data
-import json, threading, time, os, warnings, pip_system_certs, asyncio
+import json, time, os, warnings
 warnings.filterwarnings("ignore", message="Unverified HTTPS request")
 
 #Settings 읽어오기
@@ -39,56 +38,58 @@ os.makedirs(settings["fileActOutputPath"], exist_ok=True)
 os.makedirs(settings["ackPath"], exist_ok=True)
 os.makedirs(settings["downloadPath"], exist_ok=True)
 
-def MessageInputCallback(path):
-    SingleSend.MessageCollector(path, settings)
-def MessageMakerCallback(downloadPath):
-    MessageMaker.MessageMaker(downloadPath, settings, asyncSocketListener.send)
-def FileInputCallback(path):
-    FileAct.FileCollector(path, settings)
 try:
     accessToken = Auth.Auth(True, settings)
     Data.SetAccessToken(accessToken)
-    stop_event = threading.Event()
+    distributionService = None
+    singleSendService = None
+    fileActService = None
+    downloadService = None
+    messageMakerService = None
+    tokenRefreshService = None
+    asyncSocketListener = None
 
     #Distribution Thread
     if settings["distService"]:
         print("Starting Distribution Service...")
-        distributionThread = threading.Thread(target=Retrieve.ThreadRetrieve, args=(settings, stop_event))
-        distributionThread.start()
+        distributionService = Retrieve.RetrieveService(settings)
+        distributionService.start()
         print("Distribution Service Started.")
     #SingleSend Thread
     if settings["singleSendService"]:
         print("Starting SingleSend Service...")
-        singleSendThread = threading.Thread(target=Watchdog.ThreadWatchdog, args=(settings["inputPath"], MessageInputCallback, stop_event))
-        singleSendThread.start()
+        singleSendService = SingleSend.SingleSendService(settings)
+        singleSendService.start()
         print("SingleSend Service Started. Monitoring directory is: ", settings["inputPath"])
     #FileAct Thread
     if settings["fileActService"]:
         print("Starting FileAct Service")
-        fileActThread = threading.Thread(target=Watchdog.ThreadWatchdog, args=(settings["fileActInputPath"], FileInputCallback, stop_event))
-        fileActThread.start()
+        fileActService = FileAct.FileActService(settings)
+        fileActService.start()
         print("FileAct Service Started. Monitoring directory is: ", settings["fileActInputPath"])
     #Download Thread
     if settings["downloadService"]:
         print("Starting Download Service...")
-        downloadThread=threading.Thread(target=Download.ThreadDownload, args=(settings, stop_event))
-        downloadThread.start()
+        downloadService = Download.DownloadService(settings)
+        downloadService.start()
         print("Download Service Started.")
-    #MessageMaker Thread
-    if settings["messageMakerService"]:
-        print("Starting MessageMaker Service...")
-        messageMakerThread=threading.Thread(target=Watchdog.ThreadWatchdog, args=(settings["downloadPath"], MessageMakerCallback, stop_event))
-        messageMakerThread.start()
-        print("MessageMaker Service Started.")
     # Socket Listener Thread
     if settings.get("socketListenerService", False):
         print("Starting Socket Listener Service...")
         asyncSocketListener=Socket.AsyncSocketListener(settings)
         asyncSocketListener.start()
         print("Socket Listener Service Started.")
+    #MessageMaker Thread
+    if settings["messageMakerService"]:
+        if asyncSocketListener is None:
+            raise RuntimeError("messageMakerService requires socketListenerService")
+        print("Starting MessageMaker Service...")
+        messageMakerService = MessageMaker.MessageMakerService(settings, asyncSocketListener.send)
+        messageMakerService.start()
+        print("MessageMaker Service Started.")
     #Token Refresh Thread
-    tokenRefreshThread=threading.Thread(target=Token.ThreadTokenRefresh, args=(settings, stop_event))
-    tokenRefreshThread.start()
+    tokenRefreshService = Token.TokenRefreshService(settings)
+    tokenRefreshService.start()
     
     while True:
         time.sleep(1)
@@ -101,44 +102,57 @@ except KeyboardInterrupt:
 except Exception as e:
     print("---------------------------------------------------------------")
     print("Error:", type(e).__name__, e)
-    print("Stopping All Services...")
     print("---------------------------------------------------------------")
 finally:
-    #서비스(스레드) 모두 종료
-    if settings["singleSendService"]:
+    #서비스(스레드) 모두 종료 - 1) stop 전체 호출
+    if settings.get("singleSendService", False):
         print("Stopping SingleSend Service...")
-        stop_event.set()            
-        singleSendThread.join(timeout=5) 
-        print("SingleSend Service Stopped.")
-    if settings["fileActService"]:
+        if singleSendService is not None:
+            singleSendService.stop()
+    if settings.get("fileActService", False):
         print("Stopping FileAct Service...")
-        stop_event.set()            
-        fileActThread.join(timeout=5) 
-        print("FileAct Service Stopped.")
-    if settings["distService"]:
+        if fileActService is not None:
+            fileActService.stop()
+    if settings.get("distService", False):
         print("Stopping Distribution Service...")
-        stop_event.set()            
-        distributionThread.join(timeout=5)
-        print("Distribution Service Stopped.")
-    if settings["downloadService"]:
+        if distributionService is not None:
+            distributionService.stop()
+    if settings.get("downloadService", False):
         print("Stopping Download Service...")
-        stop_event.set()
-        downloadThread.join(timeout=5)
-        print("Download Service Stopped.")
-    """
-    if settings["messageMakerService"]:
+        if downloadService is not None:
+            downloadService.stop()
+    if settings.get("messageMakerService", False):
         print("Stopping MessageMaker Service...")
-        stop_event.set()
-        messageMakerThread.join(timeout=5)
-        print("MessageMaker Service Stopped.")
-    """
-    if settings["socketListenerService"]:
+        if messageMakerService is not None:
+            messageMakerService.stop()
+    if settings.get("socketListenerService", False):
         print("Stopping Socket Listener Service...")
-        asyncSocketListener.stop()
+        if asyncSocketListener is not None:
+            asyncSocketListener.stop()
+    if tokenRefreshService is not None:
+        tokenRefreshService.stop()
+
+    #서비스(스레드) 모두 종료 - 2) join 전체 대기
+    if settings.get("singleSendService", False) and singleSendService is not None:
+        singleSendService.join(timeout=5)
+        print("SingleSend Service Stopped.")
+    if settings.get("fileActService", False) and fileActService is not None:
+        fileActService.join(timeout=5)
+        print("FileAct Service Stopped.")
+    if settings.get("distService", False) and distributionService is not None:
+        distributionService.join(timeout=5)
+        print("Distribution Service Stopped.")
+    if settings.get("downloadService", False) and downloadService is not None:
+        downloadService.join(timeout=5)
+        print("Download Service Stopped.")
+    if settings.get("messageMakerService", False) and messageMakerService is not None:
+        messageMakerService.join(timeout=5)
+        print("MessageMaker Service Stopped.")
+    if settings.get("socketListenerService", False) and asyncSocketListener is not None:
+        asyncSocketListener.join(timeout=5)
         print("Socket Listener Service Stopped.")
-    #Token Refresh Thread 종료
-    stop_event.set()
-    tokenRefreshThread.join(timeout=5)
+    if tokenRefreshService is not None:
+        tokenRefreshService.join(timeout=5)
     #사용중이던 토큰 폐기
     print("Revoking Access Token...")
     Token.RevokeToken(settings)

@@ -1,7 +1,34 @@
-import requests, json, base64, os, hashlib, time
+import requests, json, base64, os, hashlib, time, threading
 import auth.Token as Token
 import data.globalData as Data
+import messaging.Watchdog as Watchdog
 from lxml import etree
+
+
+class FileActService:
+    def __init__(self, settings):
+        self.settings = settings
+        self.stop_event = threading.Event()
+        self.thread = None
+
+    def _file_input_callback(self, path):
+        FileCollector(path, self.settings)
+
+    def run_loop(self):
+        Watchdog.ThreadWatchdog(self.settings["fileActInputPath"], self._file_input_callback, self.stop_event)
+
+    def start(self):
+        if self.thread and self.thread.is_alive():
+            return
+        self.thread = threading.Thread(target=self.run_loop)
+        self.thread.start()
+
+    def stop(self):
+        self.stop_event.set()
+
+    def join(self, timeout=5):
+        if self.thread:
+            self.thread.join(timeout=timeout)
 
 #사내 ETPXKRSS는 FileAct 미가입으로 Upload, Ack까지만 가능 -> 파일 Send는 가능하지만 Nack 떨어짐
 #FileAct는 3개 파트로 분리되어있음

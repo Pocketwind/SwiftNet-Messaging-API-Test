@@ -1,6 +1,39 @@
-import requests, json, time
+import requests, json, time, threading
 import data.globalData as Data
 import messaging.Ack as Ack
+
+
+class DownloadService:
+    def __init__(self, settings):
+        self.settings = settings
+        self.thread = None
+        self.stop_event = threading.Event()
+
+    def run_loop(self):
+        time.sleep(5)
+        while not self.stop_event.is_set():
+            try:
+                access_token = Data.GetAccessToken()
+                Download(access_token, self.settings)
+            except Exception as e:
+                print("Download - ThreadDownload error:", type(e).__name__, e)
+            for _ in range(int(self.settings["downloadInterval"])):
+                if self.stop_event.is_set():
+                    break
+                time.sleep(1)
+
+    def start(self):
+        if self.thread and self.thread.is_alive():
+            return
+        self.thread = threading.Thread(target=self.run_loop)
+        self.thread.start()
+
+    def stop(self):
+        self.stop_event.set()
+
+    def join(self, timeout=5):
+        if self.thread:
+            self.thread.join(timeout=timeout)
 
 #Download one or several FIN, Interact, FileAct messages ready to be distributed.
 #Distribution List 에서 다운로드가 필요한 메시지 파일 검사 후 다운로드
@@ -134,16 +167,8 @@ def Download(accessToken, settings):
 
 #다운로드 관리하는 스레드
 def ThreadDownload(settings, stopEvent):
-    time.sleep(5) #초기화 대기
-    while not stopEvent.is_set():
-        try:
-            accessToken=Data.GetAccessToken()
-            Download(accessToken, settings)
-        except Exception as e:
-            print("Download - ThreadDownload error:", type(e).__name__, e)
-        for _ in range(int(settings["downloadInterval"])):
-            if stopEvent.is_set():
-                break
-            time.sleep(1)
+    service = DownloadService(settings)
+    service.stop_event = stopEvent
+    service.run_loop()
 
 

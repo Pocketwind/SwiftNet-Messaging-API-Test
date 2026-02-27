@@ -1,10 +1,37 @@
 from email import message
-import requests, json, base64, os, shutil
+import requests, json, base64, os, shutil, threading
 from auth import HSM
 import auth.Token as Token
 import data.globalData as Data
 import messaging.MessageMaker as MessageMaker
+import messaging.Watchdog as Watchdog
 from lxml import etree
+
+
+class SingleSendService:
+    def __init__(self, settings):
+        self.settings = settings
+        self.stop_event = threading.Event()
+        self.thread = None
+
+    def _message_input_callback(self, path):
+        MessageCollector(path, self.settings)
+
+    def run_loop(self):
+        Watchdog.ThreadWatchdog(self.settings["inputPath"], self._message_input_callback, self.stop_event)
+
+    def start(self):
+        if self.thread and self.thread.is_alive():
+            return
+        self.thread = threading.Thread(target=self.run_loop)
+        self.thread.start()
+
+    def stop(self):
+        self.stop_event.set()
+
+    def join(self, timeout=5):
+        if self.thread:
+            self.thread.join(timeout=timeout)
 
 
 def SingleSendFIN(messageData, settings):

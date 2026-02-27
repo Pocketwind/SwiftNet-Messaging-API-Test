@@ -2,9 +2,40 @@ import json, base64, requests, time, jwt, random, re, hashlib
 from urllib.parse import urlparse
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
+import threading
 import auth.Authorization as Auth
 import data.globalData as Data
 import auth.HSM as HSM
+
+
+class TokenRefreshService:
+    def __init__(self, settings):
+        self.settings = settings
+        self.stop_event = threading.Event()
+        self.thread = None
+
+    def run_loop(self):
+        while not self.stop_event.is_set():
+            if self.stop_event.wait(self.settings["expirationTime"]):
+                break
+            try:
+                access_token = Auth.Auth(True, self.settings)
+                Data.SetAccessToken(access_token)
+            except Exception as e:
+                print("Token Refresh - ThreadTokenRefresh error:", type(e).__name__, e)
+
+    def start(self):
+        if self.thread and self.thread.is_alive():
+            return
+        self.thread = threading.Thread(target=self.run_loop)
+        self.thread.start()
+
+    def stop(self):
+        self.stop_event.set()
+
+    def join(self, timeout=5):
+        if self.thread:
+            self.thread.join(timeout=timeout)
 
 #토큰 폐기
 #API 예제 Postman에만 있음
@@ -306,14 +337,8 @@ def create_nr_signature_hsm(sub, request_body, url):
     return jwt_token
 
 def ThreadTokenRefresh(settings, stopEvent):
-    while not stopEvent.is_set():
-        # 만약 stopEvent가 set되면 즉시 True 반환 -> break로 루프 종료
-        if stopEvent.wait(settings["expirationTime"]):
-            break
-        try:
-            accessToken = Auth.Auth(True, settings)
-            Data.SetAccessToken(accessToken)
-        except Exception as e:
-            print("Token Refresh - ThreadTokenRefresh error:", type(e).__name__, e)
+    service = TokenRefreshService(settings)
+    service.stop_event = stopEvent
+    service.run_loop()
 
             
