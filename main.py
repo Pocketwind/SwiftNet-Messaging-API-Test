@@ -43,13 +43,6 @@ os.makedirs(settings["downloadPath"], exist_ok=True)
 try:
     accessToken = Auth.Auth(True, settings)
     Data.SetAccessToken(accessToken)
-    distributionService = None
-    singleSendService = None
-    fileActService = None
-    downloadService = None
-    messageMakerService = None
-    tokenRefreshService = None
-    asyncSocketListener = None
     services=[]
 
     #Distribution Thread
