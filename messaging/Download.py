@@ -8,6 +8,7 @@ class DownloadService:
         self.settings = settings
         self.thread = None
         self.stop_event = threading.Event()
+        self.service_name = "Download"
 
     def run_loop(self):
         time.sleep(5)
@@ -16,7 +17,7 @@ class DownloadService:
                 access_token = Data.GetAccessToken()
                 Download(access_token, self.settings)
             except Exception as e:
-                print("Download - ThreadDownload error:", type(e).__name__, e)
+                print(f"{self.service_name} Error:", type(e).__name__, e)
             for _ in range(int(self.settings["downloadInterval"])):
                 if self.stop_event.is_set():
                     break

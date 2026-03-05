@@ -10,6 +10,7 @@ class FileActService:
         self.settings = settings
         self.stop_event = threading.Event()
         self.thread = None
+        self.service_name = "FileAct"
 
     def _file_input_callback(self, path):
         FileCollector(path, self.settings)

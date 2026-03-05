@@ -13,6 +13,7 @@ class SingleSendService:
         self.settings = settings
         self.stop_event = threading.Event()
         self.thread = None
+        self.service_name = "SingleSend"
 
     def _message_input_callback(self, path):
         MessageCollector(path, self.settings)

@@ -13,6 +13,7 @@ class MessageMakerService:
         self.stop_event = threading.Event()
         self.send_binary = send_binary
         self.thread = None
+        self.service_name = "Message Maker"
 
     def _message_maker_callback(self, download_path):
         MessageMaker(download_path, self.settings, self.send_binary)

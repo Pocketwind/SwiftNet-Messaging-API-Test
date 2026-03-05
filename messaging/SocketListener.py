@@ -16,10 +16,12 @@ class AsyncSocketListener:
         self.loop = None
         self._thread = None
         self.clients = {}
+        self.service_name = "Socket Listener"
+
     async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         addr = writer.get_extra_info("peername")
         self.clients[addr] = writer
-        print(f"Connection from {addr}", flush=True)
+        print(f"{self.service_name} - Connection from {addr}", flush=True)
 
         try:
             buffer = b""
@@ -28,7 +30,7 @@ class AsyncSocketListener:
             try:
                 first_chunk = await asyncio.wait_for(reader.read(self.buffer_size), timeout=5.0)
             except asyncio.TimeoutError:
-                print(f"Initial timeout from {addr}", flush=True)
+                print(f"{self.service_name} - Initial timeout from {addr}", flush=True)
                 return
 
             if not first_chunk:
@@ -78,17 +80,17 @@ class AsyncSocketListener:
                     return
 
                 if not data:  # EOF
-                    print(f"Client {addr} disconnected cleanly", flush=True)
+                    print(f"{self.service_name} - Client {addr} disconnected cleanly", flush=True)
                     return
 
                 buffer += data
 
         except asyncio.CancelledError:
             # task가 취소된 경우 (서버 종료 시) 조용히 종료
-            print(f"handle_client cancelled for {addr}", flush=True)
+            print(f"{self.service_name} - handle_client cancelled for {addr}", flush=True)
             raise  # 반드시 다시 raise 해야 task가 완전히 정리됨
         except Exception as e:
-            print(f"Unhandled exception in handle_client {addr}: {type(e).__name__}: {e}", flush=True)
+            print(f"{self.service_name} - Unhandled exception in handle_client {addr}: {type(e).__name__}: {e}", flush=True)
         finally:
             self.clients.pop(addr, None)
 
@@ -98,7 +100,7 @@ class AsyncSocketListener:
                     await asyncio.wait_for(writer.wait_closed(), timeout=3.0)
                 except Exception:
                     pass
-            print(f"Connection closed: {addr}", flush=True)
+            print(f"{self.service_name} - Connection closed: {addr}", flush=True)
     async def _process_frame(self, writer, data, addr):
         #Incoming
         try:
@@ -130,7 +132,7 @@ class AsyncSocketListener:
                 #HMAC + STRING
                 result = hv.validation(payload, self.settings["hmacSecret"])
                 if result:
-                    print("Validated")
+                    print(f"{self.service_name} - Validated")
                     payload=hv.decode(payload, self.settings["hmacSecret"])
                 else:
                     ack="Invalid HMAC Signature".encode(self.encoding)
@@ -139,7 +141,7 @@ class AsyncSocketListener:
                 #HMAC + JSON
                 result = hv.validation(payload, self.settings["hmacSecret"])
                 if result:
-                    print("Validated")
+                    print(f"{self.service_name} - Validated")
                     payload=hv.decode(payload, self.settings["hmacSecret"])
                     payload=payload.decode(self.encoding)
                     payload=json.loads(payload)
@@ -150,7 +152,7 @@ class AsyncSocketListener:
                 ack="Invalid Bytes".encode(self.encoding)
                 raise Exception("Invalid Message Type")
         except Exception as e:
-            print("_process_frame: ", type(e).__name__, e)
+            print(f"{self.service_name} - _process_frame: ", type(e).__name__, e)
             #string으로 보내기
             ack_header=struct.pack(">BBI", self.magic_bytes, MessageType.STRING, len(ack))
             ack_packet=ack_header+ack
@@ -349,12 +351,11 @@ class AsyncSocketListener:
             try:
                 asyncio.run(self.MainLoop())
             except Exception as e:
-                print(e)
+                print(f"{self.service_name} - {type(e).__name__}: {e}")
                 # Ensure server is closed if MainLoop fails
                 self.stop()
         # Start non-daemon thread so the listener can keep running until explicitly stopped
         self._thread = threading.Thread(target=_run, daemon=False)
         self._thread.start()
-        print("SocketListener: thread started")
 
 

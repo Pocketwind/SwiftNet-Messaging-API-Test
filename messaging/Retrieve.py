@@ -9,6 +9,7 @@ class RetrieveService:
         self.settings = settings
         self.stop_event = threading.Event()
         self.thread = None
+        self.service_name = "Retrieve"
 
     def run_loop(self):
         while not self.stop_event.is_set():
@@ -17,13 +18,13 @@ class RetrieveService:
                 distribution_list = Retrieve(access_token, self.settings)
                 check = distribution_list.get("distributions")
                 if not isinstance(check, dict):
-                    print("Distribution - List Updated.")
+                    print(f"{self.service_name} - List Updated.")
                     Data.SetDistribution(distribution_list)
                     write_atomic(self.settings["distFile"], distribution_list)
                 else:
-                    print("Distribution - Token Expired. Need to Refresh")
+                    print(f"{self.service_name} - Token Expired. Need to Refresh")
             except Exception as e:
-                print("ThreadRetrieve error:", type(e).__name__, e)
+                print(f"{self.service_name} error:", type(e).__name__, e)
             for _ in range(int(self.settings["retrieveInterval"])):
                 if self.stop_event.is_set():
                     break

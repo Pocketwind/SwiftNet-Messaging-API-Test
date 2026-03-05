@@ -13,6 +13,7 @@ class TokenRefreshService:
         self.settings = settings
         self.stop_event = threading.Event()
         self.thread = None
+        self.service_name = "Refresh Token"
 
     def run_loop(self):
         while not self.stop_event.is_set():
@@ -22,7 +23,7 @@ class TokenRefreshService:
                 access_token = Auth.Auth(True, self.settings)
                 Data.SetAccessToken(access_token)
             except Exception as e:
-                print("Token Refresh - ThreadTokenRefresh error:", type(e).__name__, e)
+                print(f"{self.service_name} Error:", type(e).__name__, e)
 
     def start(self):
         if self.thread and self.thread.is_alive():
