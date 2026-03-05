@@ -1,3 +1,5 @@
+import dis
+
 import pip_system_certs.wrapt_requests
 pip_system_certs.wrapt_requests.inject_truststore()
 import auth.Authorization as Auth
@@ -48,52 +50,46 @@ try:
     messageMakerService = None
     tokenRefreshService = None
     asyncSocketListener = None
+    services=[]
 
     #Distribution Thread
     if settings["distService"]:
-        print("Starting Distribution Service...")
         distributionService = Retrieve.RetrieveService(settings)
-        distributionService.start()
-        print("Distribution Service Started.")
+        services.append(distributionService)
     #SingleSend Thread
     if settings["singleSendService"]:
-        print("Starting SingleSend Service...")
         singleSendService = SingleSend.SingleSendService(settings)
-        singleSendService.start()
-        print("SingleSend Service Started. Monitoring directory is: ", settings["inputPath"])
+        services.append(singleSendService)
     #FileAct Thread
     if settings["fileActService"]:
-        print("Starting FileAct Service")
         fileActService = FileAct.FileActService(settings)
-        fileActService.start()
-        print("FileAct Service Started. Monitoring directory is: ", settings["fileActInputPath"])
+        services.append(fileActService)
     #Download Thread
     if settings["downloadService"]:
-        print("Starting Download Service...")
         downloadService = Download.DownloadService(settings)
-        downloadService.start()
-        print("Download Service Started.")
+        services.append(downloadService)
     # Socket Listener Thread
     if settings.get("socketListenerService", False):
-        print("Starting Socket Listener Service...")
-        asyncSocketListener=Socket.AsyncSocketListener(settings)
-        asyncSocketListener.start()
-        print("Socket Listener Service Started.")
+        asyncSocketListener = Socket.AsyncSocketListener(settings)
+        services.append(asyncSocketListener)
     #MessageMaker Thread
     if settings["messageMakerService"]:
-        if asyncSocketListener is None:
-            raise RuntimeError("messageMakerService requires socketListenerService")
-        print("Starting MessageMaker Service...")
         messageMakerService = MessageMaker.MessageMakerService(settings, asyncSocketListener.send)
-        messageMakerService.start()
-        print("MessageMaker Service Started.")
+        services.append(messageMakerService)
     #Token Refresh Thread
     tokenRefreshService = Token.TokenRefreshService(settings)
-    tokenRefreshService.start()
+    services.append(tokenRefreshService)
+    
+    #서비스 모두 시작
+    for service in services:
+        print(f"Starting {service.service_name} Service ...")
+        service.start()
+        print(f"{service.service_name} Service Started.")
+        
     
     while True:
         time.sleep(1)
-        #asyncSocketListener.Send("10.10.3.100",12345,"asdasdasd.asdasdasd")
+        #asyncSocketListener.send("localhost",56788,"asdasdasd.asdasdasd")
 except KeyboardInterrupt:
     #Ctrl+C 입력 감지
     print("---------------------------------------------------------------")
@@ -104,55 +100,16 @@ except Exception as e:
     print("Error:", type(e).__name__, e)
     print("---------------------------------------------------------------")
 finally:
-    #서비스(스레드) 모두 종료 - 1) stop 전체 호출
-    if settings.get("singleSendService", False):
-        print("Stopping SingleSend Service...")
-        if singleSendService is not None:
-            singleSendService.stop()
-    if settings.get("fileActService", False):
-        print("Stopping FileAct Service...")
-        if fileActService is not None:
-            fileActService.stop()
-    if settings.get("distService", False):
-        print("Stopping Distribution Service...")
-        if distributionService is not None:
-            distributionService.stop()
-    if settings.get("downloadService", False):
-        print("Stopping Download Service...")
-        if downloadService is not None:
-            downloadService.stop()
-    if settings.get("messageMakerService", False):
-        print("Stopping MessageMaker Service...")
-        if messageMakerService is not None:
-            messageMakerService.stop()
-    if settings.get("socketListenerService", False):
-        print("Stopping Socket Listener Service...")
-        if asyncSocketListener is not None:
-            asyncSocketListener.stop()
-    if tokenRefreshService is not None:
-        tokenRefreshService.stop()
+    #서비스 모두 종료 stop
+    for service in services:
+        print(f"Stopping {service.service_name} Service...")
+        service.stop()
 
-    #서비스(스레드) 모두 종료 - 2) join 전체 대기
-    if settings.get("singleSendService", False) and singleSendService is not None:
-        singleSendService.join(timeout=5)
-        print("SingleSend Service Stopped.")
-    if settings.get("fileActService", False) and fileActService is not None:
-        fileActService.join(timeout=5)
-        print("FileAct Service Stopped.")
-    if settings.get("distService", False) and distributionService is not None:
-        distributionService.join(timeout=5)
-        print("Distribution Service Stopped.")
-    if settings.get("downloadService", False) and downloadService is not None:
-        downloadService.join(timeout=5)
-        print("Download Service Stopped.")
-    if settings.get("messageMakerService", False) and messageMakerService is not None:
-        messageMakerService.join(timeout=5)
-        print("MessageMaker Service Stopped.")
-    if settings.get("socketListenerService", False) and asyncSocketListener is not None:
-        asyncSocketListener.join(timeout=5)
-        print("Socket Listener Service Stopped.")
-    if tokenRefreshService is not None:
-        tokenRefreshService.join(timeout=5)
+    #서비스 모두 종료 join
+    for service in services:
+        service.join(timeout=5)
+        print(f"{service.service_name} Service Stopped.")
+
     #사용중이던 토큰 폐기
     print("Revoking Access Token...")
     Token.RevokeToken(settings)
