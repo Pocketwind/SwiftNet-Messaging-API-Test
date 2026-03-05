@@ -75,9 +75,13 @@ try:
     
     #서비스 모두 시작
     for service in services:
-        print(f"Starting {service.service_name} Service ...")
-        service.start()
-        print(f"{service.service_name} Service Started.")
+        try:
+            print(f"Starting {service.service_name} Service ...")
+            service.start()
+            print(f"{service.service_name} Service Started.")
+        except Exception as e:
+            print(f"Error: {service.service_name} Service 실행 중 오류 발생 - {e}")
+            exit(1)
         
     
     while True:
