@@ -107,6 +107,7 @@ class AsyncSocketListener:
                 ack="Invalid Bytes".encode(self.encoding)
                 raise Exception("Invalid Header")
             magic_received, message_type = struct.unpack(">BB", data[:2])
+            #print(f"Received frame from {addr} - Magic: {magic_received}, Type: {message_type}", flush=True)
             #magic 에러
             if magic_received != self.magic_bytes:
                 ack="Invalid Bytes".encode(self.encoding)
@@ -237,8 +238,13 @@ class AsyncSocketListener:
             print(f"Sending binary data to {addr}")
 
             #message type: 1.json, 2.binary, 3.string, 4.json + hmac
-            if message_type == MessageType.HMAC_STRING:
-                #HMAC 먼저 분기
+            if message_type == MessageType.HMAC_JSON:
+                #HMAC + JSON 먼저 분기
+                payload=data
+                packet_header=struct.pack(">BBI", self.magic_bytes, MessageType.HMAC_JSON, len(payload))
+                packet_data=packet_header+payload
+            elif message_type == MessageType.HMAC_STRING:
+                #HMAC + STRING
                 payload=data
                 packet_header=struct.pack(">BBI", self.magic_bytes, MessageType.HMAC_STRING, len(payload))
                 packet_data=packet_header+payload
