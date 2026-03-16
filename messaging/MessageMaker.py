@@ -1,4 +1,4 @@
-import json, base64, hashlib, hmac, struct, threading
+import json, base64, hashlib, hmac, struct, threading, os
 from datetime import datetime
 from lxml import etree
 import data.globalData as Data
@@ -252,6 +252,8 @@ def MessageMaker(path, settings, SendBinary):
         file=json.load(f)
     text=json.dumps(file,separators=(',', ':'))
     
+    #download 한 파일 클라이언트로 Send (HMAC)
+    """
     digest=hmac.new(settings["hmacSecret"].encode("utf-8"),text.encode("utf-8"),hashlib.sha256).digest()
     data=digest+text.encode("utf-8")
     length=struct.pack('>I', len(data))
@@ -259,33 +261,55 @@ def MessageMaker(path, settings, SendBinary):
 
     response=SendBinary("10.10.20.181", 12345, m)
     print(response)
-    #전문 Maker
     """
+    #전문 Maker
+    
     for item in file:
+        #전문일 경우
         if isinstance(item.get("message"), dict):
+            #FIN 전문
             if item["distribution"]["service"]=="fin":
                 payload=base64.b64decode(item["message"]["payload"]).decode("utf-8")
                 payload=payload.replace("\r","")
                 sender=item["message"]["sender"]
                 receiver=item["message"]["receiver"]
-                mtype=item["message"]["message_type"].split(".")[1]
-                messageId=item["distribution"]["id"]
+                mtype = item["message"]["message_type"].split(".")[1]
+                messageId = item["distribution"]["id"]
+                tag = item["distribution"]["distribution_tag"]
                 message=MTMaker(sender,receiver,payload,mtype,item)
-                with open(f"{outputPath}/{messageId}.out", "w") as f:
-                    f.write(message)
+                #distribution 태그 적용
+                if tag=="":
+                    with open(f"{settings["outputPath"]}/{messageId}.mt", "w") as f:
+                        f.write(message)
+                else:
+                    os.makedirs(f"{settings["outputPath"]}/{tag}", exist_ok=True)
+                    with open(f"{settings["outputPath"]}/{tag}/{messageId}.mt", "w") as f:
+                        f.write(message)
+            #InterAct 전문
             elif item["distribution"]["service"]=="interAct":
                 payload=item["message"]["payload"]
                 payload=base64.b64decode(payload).decode("utf-8")
-                messageId=item["distribution"]["id"]
-                with open(f"{outputPath}/{messageId}.mxout", "w") as f:
-                    f.write(payload)
+                messageId = item["distribution"]["id"]
+                tag = item["distribution"]["distribution_tag"]
+                #distribution 태그 적용
+                if tag=="":
+                    with open(f"{settings["outputPath"]}/{messageId}.mx", "w") as f:
+                        f.write(payload)
+                else:
+                    os.makedirs(f"{settings["outputPath"]}/{tag}", exist_ok=True)
+                    with open(f"{settings["outputPath"]}/{tag}/{messageId}.mx", "w") as f:
+                        f.write(payload)
+
+        #ACK일 경우
+        #ACK는 아직 제대로 안됨
+        """
         elif isinstance(item.get("transmission_report"), dict):
             #ack maker 만들어야함
             if item["distribution"]["service"]=="fin":
-                #Ack에 원본 전문 포함할지 설정 가능함, 지금은 off
-                #payload=base64.b64decode(item["transmission_report"]["message"]["payload"]).decode("utf-8")
-                #payload=payload.replace("\r","")
-                #item["transmission_report"]["message"]["payload"]=payload
+                #FIN일 경우
+                payload=base64.b64decode(item["transmission_report"]["message"]["payload"]).decode("utf-8")
+                payload=payload.replace("\r","")
+                item["transmission_report"]["message"]["payload"]=payload
                 sender=item["transmission_report"]["message"]["sender"]
                 receiver=item["transmission_report"]["message"]["receiver"]
                 mtype=item["transmission_report"]["message"]["message_type"].split(".")[1]
@@ -300,10 +324,17 @@ def MessageMaker(path, settings, SendBinary):
                 result=MTAckMaker(sender,receiver,status,reason,payload, mdate,mtype,reference)
                 with open(f"{ackPath}/{messageId}.ack", "w") as f:
                     f.write(result)
+                #InterAct
             elif item["distribution"]["service"]=="interAct":
                 payload=item["transmission_report"]["transmission_report_payload"]
                 payload=base64.b64decode(payload).decode("utf-8")
                 messageId=item["distribution"]["id"]
-                with open(f"{ackPath}/{messageId}.mxack", "w") as f:
-                    f.write(payload)
+                tag=["distribution"]["distribution_tag"]
+                if tag=="":
+                    with open(f"{settings["ackPath"]}/{messageId}.mxack", "w") as f:
+                        f.write(payload)
+                else:
+                    os.makedirs(f"{settings["ackPath"]}/{tag}", exist_ok=True)
+                    with open(f"{settings["ackPath"]}/{tag}/{messageId}.mxack", "w") as f:
+                        f.write(payload)
     """
