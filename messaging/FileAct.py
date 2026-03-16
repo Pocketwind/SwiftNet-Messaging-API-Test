@@ -71,7 +71,7 @@ def SingleSendFileAct(path, settings):
     serviceCode="swift.generic.fast!p"  #사내 서버 미가입으로 사용 불가
     requestor="ou=xxx,o=etpxkrss,o=swift"   
     responder="ou=xxx,o=etpxkrss,o=swift"
-    messageType="type.FileAct"  #FileAct라 메시지 타입은 임의로 설정함
+    messageType="test.FileAct"  #FileAct라 메시지 타입은 임의로 설정함
     fileLogicalName=filename
     body={
         #파일 정보
