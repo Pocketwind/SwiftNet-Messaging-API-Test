@@ -275,30 +275,34 @@ def MessageMaker(path, settings, SendBinary):
                 receiver=item["message"]["receiver"]
                 mtype = item["message"]["message_type"].split(".")[1]
                 messageId = item["distribution"]["id"]
-                tag = item["distribution"]["distribution_tag"]
+                tag = item.get("distribution", {}).get("distribution_tag", None)
                 message=MTMaker(sender,receiver,payload,mtype,item)
                 #distribution 태그 적용
-                if tag=="":
+                if tag is None:
                     with open(f"{settings["outputPath"]}/{messageId}.mt", "w") as f:
                         f.write(message)
+                        print(f"Message {messageId} is created")
                 else:
                     os.makedirs(f"{settings["outputPath"]}/{tag}", exist_ok=True)
                     with open(f"{settings["outputPath"]}/{tag}/{messageId}.mt", "w") as f:
                         f.write(message)
+                        print(f"Message {messageId} is created with tag {tag}")
             #InterAct 전문
             elif item["distribution"]["service"]=="interAct":
                 payload=item["message"]["payload"]
                 payload=base64.b64decode(payload).decode("utf-8")
                 messageId = item["distribution"]["id"]
-                tag = item["distribution"]["distribution_tag"]
+                tag = item.get("distribution", {}).get("distribution_tag", None)
                 #distribution 태그 적용
-                if tag=="":
+                if tag is None:
                     with open(f"{settings["outputPath"]}/{messageId}.mx", "w") as f:
                         f.write(payload)
+                        print(f"Message {messageId} is created")
                 else:
                     os.makedirs(f"{settings["outputPath"]}/{tag}", exist_ok=True)
                     with open(f"{settings["outputPath"]}/{tag}/{messageId}.mx", "w") as f:
                         f.write(payload)
+                        print(f"Message {messageId} is created with tag {tag}")
 
         #ACK일 경우
         #ACK는 아직 제대로 안됨
