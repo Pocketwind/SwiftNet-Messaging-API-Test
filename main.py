@@ -40,10 +40,11 @@ os.makedirs(settings["fileActOutputPath"], exist_ok=True)
 os.makedirs(settings["ackPath"], exist_ok=True)
 os.makedirs(settings["downloadPath"], exist_ok=True)
 
+services=[]
+
 try:
     accessToken = Auth.Auth(True, settings)
     Data.SetAccessToken(accessToken)
-    services=[]
 
     #Distribution Thread
     if settings["distService"]:
