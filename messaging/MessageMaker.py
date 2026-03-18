@@ -291,6 +291,9 @@ def MessageMaker(path, settings, SendBinary):
             elif item["distribution"]["service"]=="interAct":
                 payload=item["message"]["payload"]
                 payload=base64.b64decode(payload).decode("utf-8")
+                #envelope 제거
+                payload=payload.replace("<envelope:Envelope xmlns:envelope=\"urn:swift:xsd:envelope\">","")
+                payload=payload.replace("</envelope:Envelope>","")
                 messageId = item["distribution"]["id"]
                 tag = item.get("distribution", {}).get("distribution_tag", None)
                 #distribution 태그 적용
